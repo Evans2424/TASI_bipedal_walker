@@ -1,0 +1,52 @@
+# PPO Configuration for Hardcore Mode
+# Optimized for: BipedalWalkerHardcore-v3 (obstacles)
+# Best for: After mastering normal mode
+# Expected time: 15-24 hours on CPU
+# Expected result: 200-300+ reward (hardcore is much harder!)
+
+# Environment settings
+env:
+  name: "BipedalWalkerHardcore-v3"  # HARDCORE mode
+  hardcore: true
+  reward_scale: 1.0
+  clip_observations: false
+  clip_actions: true
+
+# Agent settings - More robust for obstacles
+agent:
+  type: "ppo"
+  hidden_dims: [400, 300]       # LARGER: More capacity needed
+  learning_rate: 5.0e-5         # LOWER: Harder task needs stability
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_epsilon: 0.15
+  value_loss_coef: 0.5
+  entropy_coef: 0.02            # Balanced exploration
+  max_grad_norm: 0.5
+  ppo_epochs: 10
+  mini_batch_size: 64
+
+# Training settings - Much longer training needed
+training:
+  total_timesteps: 5000000      # MUCH LONGER: Hardcore is difficult
+  rollout_steps: 2048
+  eval_frequency: 10000
+  eval_episodes: 10
+  save_frequency: 100000        # Less frequent saves
+  log_frequency: 1000
+
+# Experiment settings
+experiment:
+  name: "ppo_hardcore"
+  seed: 42
+  device: "cpu"
+  num_envs: 1
+
+# Paths
+paths:
+  checkpoints: "experiments/checkpoints"
+  logs: "experiments/logs"
+  videos: "experiments/videos"
+
+# Note: Consider transfer learning from a normal mode checkpoint!
+# Load a pre-trained model and fine-tune on hardcore.

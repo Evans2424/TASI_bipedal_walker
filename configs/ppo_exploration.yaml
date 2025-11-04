@@ -1,0 +1,49 @@
+# PPO Exploration-Focused Configuration for Bipedal Walker
+# Optimized for: Maximum exploration to escape local optima
+# Best for: When agent gets stuck in suboptimal behavior
+# Expected time: 9-15 hours on CPU
+# Expected result: 200-350+ reward
+
+# Environment settings
+env:
+  name: "BipedalWalker-v3"
+  hardcore: false
+  reward_scale: 1.0
+  clip_observations: false
+  clip_actions: true
+
+# Agent settings - High exploration
+agent:
+  type: "ppo"
+  hidden_dims: [256, 256]
+  learning_rate: 1.0e-4         # Standard learning rate
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_epsilon: 0.2
+  value_loss_coef: 0.5
+  entropy_coef: 0.03            # HIGH: Strong exploration bonus
+  max_grad_norm: 0.5
+  ppo_epochs: 10
+  mini_batch_size: 64
+
+# Training settings - Longer rollouts for more diverse experiences
+training:
+  total_timesteps: 3000000      # INCREASED: More training time
+  rollout_steps: 4096           # INCREASED: Longer rollouts
+  eval_frequency: 10000
+  eval_episodes: 10
+  save_frequency: 50000
+  log_frequency: 1000
+
+# Experiment settings
+experiment:
+  name: "ppo_exploration"
+  seed: 43                      # Different seed for variety
+  device: "cpu"
+  num_envs: 1
+
+# Paths
+paths:
+  checkpoints: "experiments/checkpoints"
+  logs: "experiments/logs"
+  videos: "experiments/videos"

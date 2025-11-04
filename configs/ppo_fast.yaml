@@ -1,0 +1,49 @@
+# PPO Fast Configuration for Bipedal Walker
+# Optimized for: Quick experiments and GPU training
+# Best for: Rapid iteration, testing hypotheses
+# Expected time: 2-4 hours on GPU, 6-8 hours on CPU
+# Expected result: 150-300 reward
+
+# Environment settings
+env:
+  name: "BipedalWalker-v3"
+  hardcore: false
+  reward_scale: 1.0
+  clip_observations: false
+  clip_actions: true
+
+# Agent settings - More aggressive
+agent:
+  type: "ppo"
+  hidden_dims: [256, 256]
+  learning_rate: 5.0e-4         # HIGHER: Faster learning
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_epsilon: 0.25            # HIGHER: Larger updates
+  value_loss_coef: 0.5
+  entropy_coef: 0.02
+  max_grad_norm: 0.5
+  ppo_epochs: 10
+  mini_batch_size: 128          # LARGER: Better GPU utilization
+
+# Training settings - Shorter training
+training:
+  total_timesteps: 1500000      # DECREASED: Faster completion
+  rollout_steps: 2048
+  eval_frequency: 10000
+  eval_episodes: 10
+  save_frequency: 50000
+  log_frequency: 1000
+
+# Experiment settings
+experiment:
+  name: "ppo_fast"
+  seed: 44
+  device: "cpu"  # Change to "cuda" or "mps" for faster training
+  num_envs: 1
+
+# Paths
+paths:
+  checkpoints: "experiments/checkpoints"
+  logs: "experiments/logs"
+  videos: "experiments/videos"

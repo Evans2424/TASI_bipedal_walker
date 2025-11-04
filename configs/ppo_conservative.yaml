@@ -1,0 +1,49 @@
+# PPO Conservative Configuration for Bipedal Walker
+# Optimized for: Stable, reliable training
+# Best for: First retry after failed training
+# Expected time: 9-15 hours on CPU
+# Expected result: 250-350+ reward
+
+# Environment settings
+env:
+  name: "BipedalWalker-v3"
+  hardcore: false
+  reward_scale: 1.0
+  clip_observations: false
+  clip_actions: true
+
+# Agent settings - Conservative approach
+agent:
+  type: "ppo"
+  hidden_dims: [256, 256]
+  learning_rate: 5.0e-5        # LOWER: More stable learning
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_epsilon: 0.15            # LOWER: More conservative updates
+  value_loss_coef: 0.5
+  entropy_coef: 0.015           # SLIGHTLY HIGHER: More exploration
+  max_grad_norm: 0.5
+  ppo_epochs: 10
+  mini_batch_size: 64
+
+# Training settings - Train longer
+training:
+  total_timesteps: 3000000      # INCREASED: More training time
+  rollout_steps: 2048
+  eval_frequency: 10000
+  eval_episodes: 10
+  save_frequency: 50000
+  log_frequency: 1000
+
+# Experiment settings
+experiment:
+  name: "ppo_conservative"
+  seed: 42
+  device: "cpu"  # "cuda", "mps" (for Mac M1/M2/M3), or "cpu"
+  num_envs: 1
+
+# Paths
+paths:
+  checkpoints: "experiments/checkpoints"
+  logs: "experiments/logs"
+  videos: "experiments/videos"

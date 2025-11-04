@@ -1,0 +1,56 @@
+# SAC Tuned Configuration for Bipedal Walker
+# Optimized for: Sample efficiency and continuous control
+# Best for: When PPO fails, or you want faster convergence
+# Expected time: 4-8 hours on CPU
+# Expected result: 250-350+ reward
+
+# Environment settings
+env:
+  name: "BipedalWalker-v3"
+  hardcore: false
+  reward_scale: 1.0
+  clip_observations: false
+  clip_actions: true
+
+# Agent settings - SAC optimized
+agent:
+  type: "sac"
+  hidden_dims: [256, 256]
+  learning_rate: 3.0e-4
+  gamma: 0.99
+  tau: 0.005
+  alpha: 0.2
+  automatic_entropy_tuning: true  # Let SAC tune exploration automatically
+  target_entropy: null
+
+# Replay buffer settings
+buffer:
+  capacity: 1000000
+  batch_size: 256
+
+# Training settings - More efficient
+training:
+  total_timesteps: 1500000      # LESS needed than PPO
+  learning_starts: 10000
+  train_frequency: 1
+  gradient_steps: 1
+  eval_frequency: 10000
+  eval_episodes: 10
+  save_frequency: 50000
+  log_frequency: 1000
+
+# Exploration settings
+exploration:
+  initial_random_steps: 10000
+
+# Experiment settings
+experiment:
+  name: "sac_tuned"
+  seed: 45
+  device: "cpu"
+
+# Paths
+paths:
+  checkpoints: "experiments/checkpoints"
+  logs: "experiments/logs"
+  videos: "experiments/videos"

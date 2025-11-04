@@ -1,0 +1,45 @@
+# PPO Configuration for Bipedal Walker
+
+# Environment settings
+env:
+  name: "BipedalWalker-v3"
+  hardcore: false
+  reward_scale: 1.0
+  clip_observations: false
+  clip_actions: true
+
+# Agent settings
+agent:
+  type: "ppo"
+  hidden_dims: [256, 256]
+  learning_rate: 3.0e-4
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_epsilon: 0.2
+  value_loss_coef: 0.5
+  entropy_coef: 0.01
+  max_grad_norm: 0.5
+  ppo_epochs: 10
+  mini_batch_size: 64
+
+# Training settings
+training:
+  total_timesteps: 2000000
+  rollout_steps: 2048  # Collect this many steps before update
+  eval_frequency: 10000  # Evaluate every N steps
+  eval_episodes: 10
+  save_frequency: 50000  # Save checkpoint every N steps
+  log_frequency: 1000  # Log metrics every N steps
+
+# Experiment settings
+experiment:
+  name: "ppo_bipedal_walker"
+  seed: 42
+  device: "cpu"  # "cuda", "mps" (for Mac M1/M2/M3), or "cpu"
+  num_envs: 1  # For future parallel env support
+
+# Paths
+paths:
+  checkpoints: "experiments/checkpoints"
+  logs: "experiments/logs"
+  videos: "experiments/videos"
