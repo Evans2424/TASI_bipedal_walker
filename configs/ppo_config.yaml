@@ -35,7 +35,7 @@ training:
 experiment:
   name: "ppo_bipedal_walker"
   seed: 42
-  device: "cpu"  # "cuda", "mps" (for Mac M1/M2/M3), or "cpu"
+  device: "mps"  # "cuda", "mps" (for Mac M1/M2/M3), or "cpu"
   num_envs: 1  # For future parallel env support
 
 # Paths
