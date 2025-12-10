@@ -2,6 +2,22 @@
 
 A comprehensive implementation of state-of-the-art reinforcement learning algorithms for training agents to solve the OpenAI Gymnasium Bipedal Walker environment.
 
+## 🚀 GPU-Accelerated Training (NEW!)
+
+**For L40S GPU users**: Get **8-10x faster training** with GPU optimization!
+
+```bash
+# Fastest option: Stable-Baselines3 + GPU (45 min vs 8 hours)
+python train_sb3_gpu.py --config configs/sac_sb3_gpu.yaml
+```
+
+📖 **Quick References:**
+- `GPU_SUMMARY.md` - Quick start guide for GPU training
+- `GPU_TRAINING_GUIDE.md` - Complete GPU optimization guide  
+- `SB3_VS_CUSTOM.md` - Comparison of implementations
+
+---
+
 ## Table of Contents
 
 - [Overview](#overview)

@@ -1,0 +1,53 @@
+# PPO GPU-Optimized Configuration
+# Leverages L40S GPUs for accelerated training
+# Expected speedup: 5-10x faster than single-env CPU training
+# Expected time: 2-4 hours (vs 12-24 hours on CPU)
+
+# Environment settings
+env:
+  name: "BipedalWalker-v3"
+  hardcore: false
+  reward_scale: 1.0
+  clip_observations: false
+  clip_actions: true
+
+# Agent settings - PPO optimized
+agent:
+  type: "ppo"
+  hidden_dims: [256, 256]
+  learning_rate: 3.0e-4
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_epsilon: 0.2
+  value_loss_coef: 0.5
+  entropy_coef: 0.01
+  max_grad_norm: 0.5
+  ppo_epochs: 10
+  mini_batch_size: 128  # Increased for GPU (was 64)
+
+# Training settings - GPU optimized
+training:
+  total_timesteps: 2000000
+  rollout_steps: 4096  # Larger rollout buffer for parallel envs
+  eval_frequency: 50000
+  eval_episodes: 10
+  save_frequency: 100000
+  log_frequency: 2000
+
+# GPU-specific settings
+gpu:
+  num_parallel_envs: 16  # Run 16 environments in parallel
+  mixed_precision: true  # Use FP16 for faster computation
+  pin_memory: true       # Pin memory for faster CPU->GPU transfer
+
+# Experiment settings
+experiment:
+  name: "ppo_gpu_optimized"
+  seed: 42
+  device: "cuda:0"  # Change to cuda:1, cuda:2, cuda:3 for other GPUs
+
+# Paths
+paths:
+  checkpoints: "experiments/checkpoints"
+  logs: "experiments/logs"
+  videos: "experiments/videos"
