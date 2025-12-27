@@ -1,7 +1,6 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[10pt,a4paper,twocolumn]{article}
 
 % Packages
-\usepackage[utf-8]{inputenc}
 \usepackage[margin=1in]{geometry}
 \usepackage{graphicx}
 \usepackage{amsmath}
@@ -67,6 +66,76 @@ The bipedal walker task, formalized as a continuous control problem, requires an
     \item \textbf{Robustness}: Generalization to unseen or more difficult terrain configurations.
 \end{itemize}
 
+\subsubsection{Action Space}
+
+The action space consists of 4 continuous values normalized in the range $[-1, 1]$:
+\begin{itemize}
+    \item Action 0: Right hip motor speed control
+    \item Action 1: Right knee motor speed control
+    \item Action 2: Left hip motor speed control  
+    \item Action 3: Left knee motor speed control
+\end{itemize}
+
+Each action controls the motor torque magnitude and direction. The maximum motor torque is set to 80 units, with hip motors capable of speeds up to 4 rad/s and knee motors up to 6 rad/s.
+
+\subsubsection{Observation Space}
+
+The observation vector consists of 24 continuous features representing the agent's state:
+
+\textbf{Hull state (3 features):}
+\begin{itemize}
+    \item Hull angle relative to vertical (radians, normalized to $[-\pi, \pi]$)
+    \item Hull angular velocity (normalized, range $[-5, 5]$)
+\end{itemize}
+
+\textbf{Velocity state (2 features):}
+\begin{itemize}
+    \item Horizontal velocity normalized by viewport width
+    \item Vertical velocity normalized by viewport height
+\end{itemize}
+
+\textbf{Joint states (8 features):}
+\begin{itemize}
+    \item 4 joint angles (hip and knee angles for both legs, normalized)
+    \item 4 joint angular velocities (normalized by motor speed constants)
+\end{itemize}
+
+\textbf{Contact flags (2 features):}
+\begin{itemize}
+    \item Right leg ground contact (binary: 0 or 1)
+    \item Left leg ground contact (binary: 0 or 1)
+\end{itemize}
+
+\textbf{Lidar measurements (10 features):}
+\begin{itemize}
+    \item 10 distance measurements from lidar-like rangefinders distributed around the agent
+    \item Each measurement returns the fraction of the lidar range that hits terrain (0 to 1)
+\end{itemize}
+
+Total observation dimension: 24 continuous values.
+
+\subsubsection{Reward Function}
+
+The reward structure incentivizes forward progress while penalizing energy consumption and failures:
+
+\[
+r_t = 130 \cdot x_{\text{progress}} - 5.0 \cdot |\theta_{\text{hull}}| - 0.00035 \cdot \sum_{i=0}^{3} |\text{clip}(a_i, 0, 1)| - \mathbb{1}_{\text{fallen}} \times 100
+\]
+
+where:
+\begin{itemize}
+    \item $x_{\text{progress}}$ is the forward position progress (normalized, coefficient 130 targets 300 points for full task)
+    \item $|\theta_{\text{hull}}|$ is the absolute hull angle (keeping head upright is rewarded)
+    \item $\sum_{i=0}^{3} |\text{clip}(a_i, 0, 1)|$ is the energy cost based on motor torque (normalized to approximately -50 for heuristic baseline)
+    \item $\mathbb{1}_{\text{fallen}}$ is an indicator that the hull touched the ground (-100 penalty for failure)
+\end{itemize}
+
+Success criteria:
+\begin{itemize}
+    \item Standard mode: Achieve 300+ total reward within 1600 timesteps
+    \item Hardcore mode: Achieve 300+ total reward within 2000 timesteps
+\end{itemize}
+
 \subsection{Main Contributions}
 
 This study contributes the following:
@@ -76,9 +145,8 @@ This study contributes the following:
     
     \item \textbf{Systematic evaluation framework} including standardized hyperparameter sets, training protocols, and evaluation metrics.
     
-    \item \textbf{Performance analysis} across multiple dimensions: convergence speed, solution stability, reward distribution, and terrain robustness.
+    \item \textbf{Performance analysis} across multiple dimensions: convergence speed, solution stability, reward distribution.
     
-    \item \textbf{Practical guidance} for practitioners on algorithm selection and hyperparameter tuning for continuous control problems.
 \end{enumerate}
 
 \subsection{Approach Overview}
