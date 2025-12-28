@@ -85,15 +85,28 @@ class TD3Agent(BaseAgent):
 
         Args:
             observation: Current observation
-            deterministic: If True, return deterministic action (no exploration noise)
+            deterministic: If True, return deterministic action (no exploration noise).
+                         If False, add Gaussian exploration noise for training.
 
         Returns:
-            Selected action
+            Selected action in range [-1, 1]
         """
         with torch.no_grad():
             obs_tensor = self.to_tensor(observation).unsqueeze(0)
             action = self.actor(obs_tensor)
-            return action.cpu().numpy()[0]
+            action = action.cpu().numpy()[0]
+        
+        # Add exploration noise during training (deterministic=False)
+        if not deterministic:
+            # Gaussian noise for exploration
+            noise = np.random.normal(0, self.target_noise, size=action.shape)
+            # Clip noise to reasonable range
+            noise = np.clip(noise, -self.noise_clip, self.noise_clip)
+            action = action + noise
+            # Ensure action remains in valid range [-1, 1]
+            action = np.clip(action, -1.0, 1.0)
+        
+        return action
 
     def update(self, batch: Dict[str, Any]) -> Dict[str, float]:
         """Update agent using TD3 algorithm.
