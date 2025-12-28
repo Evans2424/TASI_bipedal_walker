@@ -1,0 +1,677 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+
+% Packages
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{listings}
+
+% Hyperlink colors
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+% Code listing style
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+}
+
+\title{Comparative Analysis of Deep Reinforcement Learning Algorithms for Bipedal Walker Locomotion}
+
+\author{
+    \textbf{Author Name}\\
+    Institution/University\\
+    Email: author@example.com
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+% ============================
+% ABSTRACT
+% ============================
+\begin{abstract}
+
+Bipedal locomotion is a fundamental challenge in robotics and reinforcement learning, requiring agents to learn stable walking patterns on varied terrains. This paper presents a comprehensive comparative study of three state-of-the-art deep reinforcement learning algorithms---Twin Delayed Deep Deterministic Policy Gradient (TD3), Proximal Policy Optimization (PPO), and Soft Actor-Critic (SAC)---for training bipedal walking agents. We evaluate these algorithms on two environment variants: standard terrain (without obstacles) and hardcore mode (with diverse obstacles including stairs, pits, and holes). Our study aims to determine which algorithm achieves the best performance in terms of convergence speed, stability, and robustness across different terrain difficulties. Detailed experimental analysis includes hyperparameter configurations, learning curves, and performance metrics. The results provide practitioners with empirical guidance for algorithm selection in continuous control tasks with varying environmental complexity.
+
+\end{abstract}
+
+\section{Introduction}
+
+\subsection{Problem Definition}
+
+The bipedal walker task, formalized as a continuous control problem, requires an agent to learn locomotion policies that enable stable walking across varied terrain. This problem is challenging due to several factors:
+
+\begin{itemize}
+    \item \textbf{High-dimensional action space}: Continuous control of multiple joint angles and forces.
+    \item \textbf{Complex dynamics}: Non-linear interactions between agent movements and environmental physics.
+    \item \textbf{Sample efficiency}: Limited budget of environment interactions during training.
+    \item \textbf{Robustness}: Generalization to unseen or more difficult terrain configurations.
+\end{itemize}
+
+\subsubsection{Action Space}
+
+The action space consists of 4 continuous values normalized in the range $[-1, 1]$:
+\begin{itemize}
+    \item Action 0: Right hip motor speed control
+    \item Action 1: Right knee motor speed control
+    \item Action 2: Left hip motor speed control  
+    \item Action 3: Left knee motor speed control
+\end{itemize}
+
+Each action controls the motor torque magnitude and direction. The maximum motor torque is set to 80 units, with hip motors capable of speeds up to 4 rad/s and knee motors up to 6 rad/s.
+
+\subsubsection{Observation Space}
+
+The observation vector consists of 24 continuous features representing the agent's state:
+
+\textbf{Hull state (3 features):}
+\begin{itemize}
+    \item Hull angle relative to vertical (radians, normalized to $[-\pi, \pi]$)
+    \item Hull angular velocity (normalized, range $[-5, 5]$)
+\end{itemize}
+
+\textbf{Velocity state (2 features):}
+\begin{itemize}
+    \item Horizontal velocity normalized by viewport width
+    \item Vertical velocity normalized by viewport height
+\end{itemize}
+
+\textbf{Joint states (8 features):}
+\begin{itemize}
+    \item 4 joint angles (hip and knee angles for both legs, normalized)
+    \item 4 joint angular velocities (normalized by motor speed constants)
+\end{itemize}
+
+\textbf{Contact flags (2 features):}
+\begin{itemize}
+    \item Right leg ground contact (binary: 0 or 1)
+    \item Left leg ground contact (binary: 0 or 1)
+\end{itemize}
+
+\textbf{Lidar measurements (10 features):}
+\begin{itemize}
+    \item 10 distance measurements from lidar-like rangefinders distributed around the agent
+    \item Each measurement returns the fraction of the lidar range that hits terrain (0 to 1)
+\end{itemize}
+
+Total observation dimension: 24 continuous values.
+
+\subsubsection{Reward Function}
+
+The reward structure incentivizes forward progress while penalizing energy consumption and failures:
+
+\[
+r_t = 130 \cdot x_{\text{progress}} - 5.0 \cdot |\theta_{\text{hull}}| - 0.00035 \cdot \sum_{i=0}^{3} |\text{clip}(a_i, 0, 1)| - \mathbb{1}_{\text{fallen}} \times 100
+\]
+
+where:
+\begin{itemize}
+    \item $x_{\text{progress}}$ is the forward position progress (normalized, coefficient 130 targets 300 points for full task)
+    \item $|\theta_{\text{hull}}|$ is the absolute hull angle (keeping head upright is rewarded)
+    \item $\sum_{i=0}^{3} |\text{clip}(a_i, 0, 1)|$ is the energy cost based on motor torque (normalized to approximately -50 for heuristic baseline)
+    \item $\mathbb{1}_{\text{fallen}}$ is an indicator that the hull touched the ground (-100 penalty for failure)
+\end{itemize}
+
+Success criteria:
+\begin{itemize}
+    \item Standard mode: Achieve 300+ total reward within 1600 timesteps
+    \item Hardcore mode: Achieve 300+ total reward within 2000 timesteps
+\end{itemize}
+
+\subsection{Main Contributions}
+
+This study contributes the following:
+
+\begin{enumerate}
+    \item \textbf{Comprehensive empirical comparison} of three popular reinforcement learning algorithms (TD3, PPO, SAC) on the bipedal walker task under two difficulty levels.
+    
+    \item \textbf{Systematic evaluation framework} including standardized hyperparameter sets, training protocols, and evaluation metrics.
+    
+    \item \textbf{Performance analysis} across multiple dimensions: convergence speed, solution stability, reward distribution.
+    
+\end{enumerate}
+
+\subsection{Approach Overview}
+
+We train and evaluate three reinforcement learning algorithms on the BipedalWalker-v3 environment under two configurations:
+\begin{itemize}
+    \item \textbf{Standard mode}: Flat terrain with moderate difficulty.
+    \item \textbf{Hardcore mode}: Complex terrain with obstacles, stairs, pits, and holes.
+\end{itemize}
+
+For each algorithm and environment configuration, we conduct multiple training runs with fixed random seeds to ensure reproducibility. We measure performance using episode rewards, training convergence curves, evaluation metrics, and sample efficiency. This enables a fair comparison of algorithm effectiveness in both benign and challenging conditions.
+
+\newpage
+
+% ============================
+% RELATED WORK
+% ============================
+\section{Related Work}
+
+\subsection{Reinforcement Learning for Continuous Control}
+
+Deep reinforcement learning has emerged as a powerful approach for solving continuous control problems. Early work by Mnih et al.~\cite{mnih2013playing} introduced Deep Q-Networks (DQN) for discrete action spaces, which later inspired continuous control methods.
+
+\subsection{Policy Gradient Methods}
+
+Proximal Policy Optimization (PPO) is an on-policy algorithm that improves upon prior policy gradient methods by using a clipped surrogate objective to prevent overly large policy updates~\cite{schulman2017proximal}. PPO is known for its stability and ease of implementation, making it a popular baseline in continuous control research.
+
+\subsection{Off-Policy Actor-Critic Methods}
+
+\textbf{Deep Deterministic Policy Gradient (DDPG)}~\cite{lillicrap2015continuous} introduced off-policy learning for continuous control by combining actor-critic methods with experience replay. However, DDPG suffers from Q-function overestimation issues that can lead to training instability.
+
+\textbf{Twin Delayed Deep Deterministic Policy Gradient (TD3)}~\cite{fujimoto2018addressing} addresses DDPG's overestimation by maintaining twin critics and using target smoothing regularization, resulting in improved stability and sample efficiency.
+
+\textbf{Soft Actor-Critic (SAC)}~\cite{haarnoja2018soft} combines off-policy learning with entropy regularization to encourage exploration and robustness. SAC maximizes both expected return and policy entropy, leading to better exploration and improved performance on diverse tasks.
+
+\subsection{Comparison with Prior Work}
+
+Our study differs from prior work in several ways:
+\begin{itemize}
+    \item \textbf{Multiple difficulty levels}: We evaluate algorithms on both standard and hardcore environments, testing generalization to harder terrain.
+    \item \textbf{Systematic hyperparameter study}: We provide detailed hyperparameter configurations for each algorithm optimized for this task.
+    \item \textbf{Reproducibility focus}: All experiments are conducted with fixed random seeds and multiple training runs for statistical reliability.
+\end{itemize}
+
+\newpage
+
+% ============================
+% ENVIRONMENT AND TASK
+% ============================
+\section{Environment and Task Setup}
+
+\subsection{BipedalWalker-v3 Environment}
+
+The BipedalWalker-v3 environment~\cite{brockman2016openai} is a classic benchmark for continuous control in reinforcement learning. It simulates a 4-jointed bipedal robot that must learn to walk forward while minimizing energy consumption.
+
+\subsubsection{Observation Space}
+
+The agent receives observations comprising:
+\begin{itemize}
+    \item Hull angle, angular velocity, and velocity (3 dimensions)
+    \item Position and velocity of 4 legs (8 dimensions)
+    \item Contact flags for leg-ground interactions (4 dimensions)
+    \item Lidar-like distance measurements to terrain ahead (10 dimensions)
+\end{itemize}
+
+Total observation dimension: 24 features.
+
+\subsubsection{Action Space}
+
+The action space consists of 4 continuous values in the range $[-1, 1]$, corresponding to motor torques for:
+\begin{itemize}
+    \item Hip actuators (2 motors)
+    \item Knee actuators (2 motors)
+\end{itemize}
+
+\subsubsection{Reward Function}
+
+The reward is defined as:
+\[
+r_t = v_x - 0.005 \cdot \left(\sum_i a_i^2\right) - \mathbb{1}_{\text{fell}}
+\]
+
+where:
+\begin{itemize}
+    \item $v_x$ is forward velocity (reward for progress)
+    \item $\sum_i a_i^2$ is the sum of squared actions (penalizes energy consumption)
+    \item $\mathbb{1}_{\text{fell}}$ indicates episode failure (agent falls = -1)
+\end{itemize}
+
+\subsection{Environment Variants}
+
+\subsubsection{Standard Mode}
+
+Clean, relatively flat terrain with gentle variations. This mode tests basic locomotion capability.
+
+\subsubsection{Hardcore Mode}
+
+Challenging terrain featuring:
+\begin{itemize}
+    \item Stairs and descents
+    \item Pits and gaps
+    \item Various obstacles
+    \item Uneven surfaces
+\end{itemize}
+
+This mode tests robustness and generalization to complex environments.
+
+\newpage
+
+% ============================
+% METHODOLOGY
+% ============================
+\section{Methodology}
+
+\subsection{Reinforcement Learning Algorithms}
+
+\subsubsection{TD3 (Twin Delayed DDPG)}
+
+TD3 is an off-policy actor-critic algorithm that improves upon DDPG through three mechanisms:
+
+\begin{enumerate}
+    \item \textbf{Twin Critics}: Two Q-functions $Q_{\theta_1}$ and $Q_{\theta_2}$ provide estimates. The target uses the minimum: $\min(Q_{\theta_1}, Q_{\theta_2})$.
+    
+    \item \textbf{Delayed Policy Updates}: The actor is updated less frequently than critics (every $k$ critic updates), reducing overestimation bias propagation.
+    
+    \item \textbf{Target Smoothing Regularization (TSMR)}: Target actions are perturbed with clipped noise:
+    \[
+    a' = \text{clip}(\mu_{\phi'}(s') + \epsilon, -c, c), \quad \epsilon \sim \mathcal{N}(0, \sigma^2)
+    \]
+\end{enumerate}
+
+The Bellman target is:
+\[
+y = r + \gamma \min_{i \in \{1,2\}} Q_{\theta'_i}(s', a')
+\]
+
+\subsubsection{PPO (Proximal Policy Optimization)}
+
+PPO is an on-policy algorithm that optimizes the policy using a clipped surrogate objective:
+
+\[
+L^{\text{clip}}(\theta) = \mathbb{E}_t \left[\min(r_t(\theta) \hat{A}_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) \hat{A}_t)\right]
+\]
+
+where $r_t(\theta) = \frac{\pi_\theta(a_t | s_t)}{\pi_{\theta_{\text{old}}}(a_t | s_t)}$ is the probability ratio and $\hat{A}_t$ is the advantage estimate computed using Generalized Advantage Estimation (GAE).
+
+\subsubsection{SAC (Soft Actor-Critic)}
+
+SAC is an off-policy algorithm that maximizes a trade-off between expected return and policy entropy:
+
+\[
+J(\pi) = \mathbb{E}_{s \sim \mathcal{D}} \left[\mathbb{E}_{a \sim \pi} [Q(s,a) - \alpha \log \pi(a|s)]\right]
+\]
+
+The algorithm maintains:
+\begin{itemize}
+    \item Stochastic policy $\pi_\phi(a|s)$ (Gaussian)
+    \item Two Q-networks for overestimation mitigation
+    \item Optional automatic entropy temperature tuning
+\end{itemize}
+
+\subsection{Training Setup}
+
+\subsubsection{Network Architecture}
+
+All algorithms use identical network architectures for fair comparison:
+
+\begin{itemize}
+    \item \textbf{Policy Network}: MLP with hidden layers [256, 256], ReLU activations, tanh output for actions.
+    \item \textbf{Value Networks}: MLP with hidden layers [256, 256], ReLU activations, linear output.
+\end{itemize}
+
+\subsubsection{Hyperparameters}
+
+The hyperparameter configurations for each algorithm are presented in the results section.
+
+\subsection{Training Protocol}
+
+\begin{enumerate}
+    \item Initialize environment and agent with fixed seed.
+    \item Collect experience through environment interaction.
+    \item Update agent parameters periodically.
+    \item Evaluate performance every 10k steps on 10 evaluation episodes.
+    \item Repeat until convergence or maximum timesteps reached.
+\end{enumerate}
+
+\subsection{Evaluation Metrics}
+
+\begin{itemize}
+    \item \textbf{Episode Return}: Sum of rewards over an episode.
+    \item \textbf{Mean Reward (Last 100 Episodes)}: Rolling average to assess convergence.
+    \item \textbf{Convergence Speed}: Training steps to reach target performance threshold.
+    \item \textbf{Stability}: Standard deviation of evaluation rewards.
+    \item \textbf{Sample Efficiency}: Reward achieved per environment interaction.
+\end{itemize}
+
+\newpage
+
+% ============================
+% EXPERIMENTS AND RESULTS
+% ============================
+\section{Experiments and Results}
+
+\subsection{Experimental Setup}
+
+\subsubsection{Hardware and Software}
+
+\begin{itemize}
+    \item \textbf{Python Version}: 3.x
+    \item \textbf{Framework}: PyTorch
+    \item \textbf{Environment}: BipedalWalker-v3 (OpenAI Gym)
+    \item \textbf{Device}: [CPU/GPU specification]
+\end{itemize}
+
+\subsubsection{Training Runs}
+
+[Number of training runs per algorithm/environment combination, random seed specifications, total training timesteps]
+
+\subsection{Hyperparameter Configurations}
+
+\subsubsection{TD3 Configuration}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Learning Rate & [VALUE] \\
+Gamma (Discount Factor) & [VALUE] \\
+Tau (Soft Update) & [VALUE] \\
+Target Noise & [VALUE] \\
+Noise Clip & [VALUE] \\
+Policy Update Frequency & [VALUE] \\
+Batch Size & [VALUE] \\
+Replay Buffer Capacity & [VALUE] \\
+\bottomrule
+\end{tabular}
+\caption{TD3 hyperparameter configuration}
+\label{tab:td3_params}
+\end{table}
+
+\subsubsection{PPO Configuration}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Learning Rate & [VALUE] \\
+Gamma (Discount Factor) & [VALUE] \\
+GAE Lambda & [VALUE] \\
+Clip Epsilon & [VALUE] \\
+Value Loss Coefficient & [VALUE] \\
+Entropy Coefficient & [VALUE] \\
+PPO Epochs & [VALUE] \\
+Mini-batch Size & [VALUE] \\
+Rollout Steps & [VALUE] \\
+\bottomrule
+\end{tabular}
+\caption{PPO hyperparameter configuration}
+\label{tab:ppo_params}
+\end{table}
+
+\subsubsection{SAC Configuration}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Learning Rate & [VALUE] \\
+Gamma (Discount Factor) & [VALUE] \\
+Tau (Soft Update) & [VALUE] \\
+Alpha (Entropy Coefficient) & [VALUE] \\
+Automatic Entropy Tuning & [VALUE] \\
+Batch Size & [VALUE] \\
+Replay Buffer Capacity & [VALUE] \\
+Learning Starts & [VALUE] \\
+\bottomrule
+\end{tabular}
+\caption{SAC hyperparameter configuration}
+\label{tab:sac_params}
+\end{table}
+
+\subsection{Performance Results}
+
+\subsubsection{Standard Mode Results}
+
+\paragraph{Learning Curves}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/standard_learning_curves.png}
+    \caption{Episode rewards vs training steps}
+    \label{fig:std_learning}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/standard_eval_curves.png}
+    \caption{Evaluation rewards vs training steps}
+    \label{fig:std_eval}
+\end{subfigure}
+\caption{Standard Mode: Learning Progress}
+\label{fig:standard_results}
+\end{figure}
+
+[Space for figure or description of results]
+
+\paragraph{Quantitative Results}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Metric} & \textbf{TD3} & \textbf{PPO} & \textbf{SAC} \\
+\midrule
+Final Mean Reward & [VALUE] & [VALUE] & [VALUE] \\
+Convergence Steps & [VALUE] & [VALUE] & [VALUE] \\
+Reward Std Dev & [VALUE] & [VALUE] & [VALUE] \\
+Sample Efficiency & [VALUE] & [VALUE] & [VALUE] \\
+\bottomrule
+\end{tabular}
+\caption{Standard Mode: Comparative Performance Metrics}
+\label{tab:standard_results}
+\end{table}
+
+[Space for analysis and interpretation]
+
+\subsubsection{Hardcore Mode Results}
+
+\paragraph{Learning Curves}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/hardcore_learning_curves.png}
+    \caption{Episode rewards vs training steps}
+    \label{fig:hard_learning}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/hardcore_eval_curves.png}
+    \caption{Evaluation rewards vs training steps}
+    \label{fig:hard_eval}
+\end{subfigure}
+\caption{Hardcore Mode: Learning Progress}
+\label{fig:hardcore_results}
+\end{figure}
+
+[Space for figure or description of results]
+
+\paragraph{Quantitative Results}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Metric} & \textbf{TD3} & \textbf{PPO} & \textbf{SAC} \\
+\midrule
+Final Mean Reward & [VALUE] & [VALUE] & [VALUE] \\
+Convergence Steps & [VALUE] & [VALUE] & [VALUE] \\
+Reward Std Dev & [VALUE] & [VALUE] & [VALUE] \\
+Sample Efficiency & [VALUE] & [VALUE] & [VALUE] \\
+\bottomrule
+\end{tabular}
+\caption{Hardcore Mode: Comparative Performance Metrics}
+\label{tab:hardcore_results}
+\end{table}
+
+[Space for analysis and interpretation]
+
+\subsection{Comparative Analysis}
+
+\paragraph{Algorithm Performance Summary}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Algorithm} & \textbf{Std Mode} & \textbf{Hard Mode} & \textbf{Stability} & \textbf{Speed} \\
+\midrule
+TD3 & [RANKING] & [RANKING] & [RANKING] & [RANKING] \\
+PPO & [RANKING] & [RANKING] & [RANKING] & [RANKING] \\
+SAC & [RANKING] & [RANKING] & [RANKING] & [RANKING] \\
+\bottomrule
+\end{tabular}
+\caption{Overall Algorithm Rankings}
+\label{tab:rankings}
+\end{table}
+
+[Space for detailed comparative discussion]
+
+\newpage
+
+% ============================
+% DISCUSSION
+% ============================
+\section{Discussion}
+
+\subsection{Key Findings}
+
+[Space for discussion of main results]
+
+\begin{itemize}
+    \item Finding 1: [Description and implications]
+    \item Finding 2: [Description and implications]
+    \item Finding 3: [Description and implications]
+\end{itemize}
+
+\subsection{Algorithm-Specific Observations}
+
+\subsubsection{TD3}
+
+[Analysis of TD3's performance, strengths, and weaknesses]
+
+\subsubsection{PPO}
+
+[Analysis of PPO's performance, strengths, and weaknesses]
+
+\subsubsection{SAC}
+
+[Analysis of SAC's performance, strengths, and weaknesses]
+
+\subsection{Difficulty Transfer}
+
+[Discussion of how algorithms perform when transitioning from standard to hardcore mode]
+
+\subsection{Sample Efficiency and Computational Cost}
+
+[Comparison of sample efficiency and computational requirements]
+
+\newpage
+
+% ============================
+% CONCLUSION
+% ============================
+\section{Conclusion}
+
+This study presents a comprehensive empirical comparison of three state-of-the-art deep reinforcement learning algorithms---TD3, PPO, and SAC---on the bipedal walker locomotion task across two difficulty levels. Our experiments provide systematic evidence of each algorithm's effectiveness in continuous control with varying environmental complexity.
+
+\subsection{Summary}
+
+[Summary of main findings]
+
+\subsection{Practical Implications}
+
+[Guidance for practitioners on algorithm selection based on task requirements]
+
+\subsection{Limitations}
+
+\begin{itemize}
+    \item Limited to single benchmark environment
+    \item [Additional limitations]
+\end{itemize}
+
+\subsection{Future Work}
+
+\begin{enumerate}
+    \item Extend evaluation to additional continuous control benchmarks
+    \item Investigate hybrid approaches combining strengths of multiple algorithms
+    \item Study transfer learning and fine-tuning across related tasks
+    \item Analyze computational efficiency and scalability
+    \item Conduct ablation studies on key hyperparameters
+\end{enumerate}
+
+% ============================
+% REFERENCES
+% ============================
+\newpage
+\section{References}
+
+\begin{thebibliography}{99}
+
+\bibitem{mnih2013playing}
+Mnih, V., Kavukcuoglu, K., \& Silver, D. (2013).
+``Playing Atari with Deep Reinforcement Learning.''
+\textit{arXiv preprint arXiv:1312.5602}.
+
+\bibitem{schulman2017proximal}
+Schulman, J., Wolski, F., Dhariwal, P., Radford, A., \& Klimov, O. (2017).
+``Proximal Policy Optimization Algorithms.''
+\textit{arXiv preprint arXiv:1707.06347}.
+
+\bibitem{lillicrap2015continuous}
+Lillicrap, T. P., Hunt, J. J., Pritzel, A., Heess, N., Erez, T., Tassa, Y., ... \& Wierstra, D. (2015).
+``Continuous control with deep reinforcement learning.''
+\textit{arXiv preprint arXiv:1509.02971}.
+
+\bibitem{fujimoto2018addressing}
+Fujimoto, S., Hoof, H., \& Meger, D. (2018).
+``Addressing Function Approximation Error in Actor-Critic Methods.''
+\textit{International Conference on Machine Learning (ICML)}.
+
+\bibitem{haarnoja2018soft}
+Haarnoja, T., Zhou, A., Abbeel, P., \& Levine, S. (2018).
+``Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor.''
+\textit{International Conference on Machine Learning (ICML)}.
+
+\bibitem{brockman2016openai}
+Brockman, G., Cheung, V., Petrov, L., Schneider, J., Schulman, J., Tang, J., \& Zaremba, W. (2016).
+``OpenAI Gym.''
+\textit{arXiv preprint arXiv:1606.01540}.
+
+\end{thebibliography}
+
+% ============================
+% APPENDIX (optional)
+% ============================
+\newpage
+\appendix
+
+\section{Additional Experimental Details}
+
+[Space for additional experimental configuration details if needed]
+
+\section{Extended Results Tables}
+
+[Space for extended results and statistical analysis]
+
+\end{document}

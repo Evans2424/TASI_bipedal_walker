@@ -1,0 +1,52 @@
+# TD3 Configuration for Bipedal Walker (Aggressive - Fast Learning)
+
+# Environment settings
+env:
+  name: "BipedalWalker-v3"
+  hardcore: false
+  reward_scale: 1.0
+  clip_observations: false
+  clip_actions: true
+
+# Agent settings
+agent:
+  type: "td3"
+  hidden_dims: [256, 256]
+  learning_rate: 1.0e-3  # Higher learning rate
+  gamma: 0.98  # Lower discount factor (shorter horizon)
+  tau: 0.01  # More aggressive target updates
+  target_noise: 0.1  # Less noise in target actions (less exploration)
+  noise_clip: 0.25  # Smaller clipping range
+  policy_update_freq: 1  # More frequent policy updates
+
+# Replay buffer settings
+buffer:
+  capacity: 500000  # Smaller buffer (more focus on recent experience)
+  batch_size: 512
+
+# Training settings
+training:
+  total_timesteps: 500000  # Shorter training
+  learning_starts: 5000
+  train_frequency: 1
+  gradient_steps: 1
+  eval_frequency: 5000
+  eval_episodes: 5
+  save_frequency: 25000
+  log_frequency: 500
+
+# Exploration settings
+exploration:
+  initial_random_steps: 5000
+
+# Experiment settings
+experiment:
+  name: "td3_bipedal_walker_aggressive"
+  seed: 42
+  device: "cpu"
+
+# Paths
+paths:
+  checkpoints: "experiments/checkpoints"
+  logs: "experiments/logs"
+  videos: "experiments/videos"
