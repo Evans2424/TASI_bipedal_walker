@@ -97,6 +97,14 @@ def train_ppo(config: dict):
         reward_scale=config['env']['reward_scale'],
         clip_observations=config['env']['clip_observations'],
         clip_actions=config['env']['clip_actions'],
+        normalize_observations=config['env'].get('normalize_observations', False),
+        normalize_rewards=config['env'].get('normalize_rewards', False),
+        clip_normalized_obs=config['env'].get('clip_normalized_obs', 10.0),
+        clip_normalized_reward=config['env'].get('clip_normalized_reward', 10.0),
+        frame_skip=config['env'].get('frame_skip', 1),
+        smoothness_coef=config['env'].get('smoothness_coef', 0.0),
+        hull_angle_coef=config['env'].get('hull_angle_coef', 0.0),
+        hull_angular_vel_coef=config['env'].get('hull_angular_vel_coef', 0.0),
         seed=config['experiment']['seed']
     )
 
@@ -224,6 +232,14 @@ def train_sac(config: dict):
         reward_scale=config['env']['reward_scale'],
         clip_observations=config['env']['clip_observations'],
         clip_actions=config['env']['clip_actions'],
+        normalize_observations=config['env'].get('normalize_observations', False),
+        normalize_rewards=config['env'].get('normalize_rewards', False),
+        clip_normalized_obs=config['env'].get('clip_normalized_obs', 10.0),
+        clip_normalized_reward=config['env'].get('clip_normalized_reward', 10.0),
+        frame_skip=config['env'].get('frame_skip', 1),
+        smoothness_coef=config['env'].get('smoothness_coef', 0.0),
+        hull_angle_coef=config['env'].get('hull_angle_coef', 0.0),
+        hull_angular_vel_coef=config['env'].get('hull_angular_vel_coef', 0.0),
         seed=config['experiment']['seed']
     )
 
@@ -360,6 +376,14 @@ def train_td3(config: dict):
         reward_scale=config['env']['reward_scale'],
         clip_observations=config['env']['clip_observations'],
         clip_actions=config['env']['clip_actions'],
+        normalize_observations=config['env'].get('normalize_observations', False),
+        normalize_rewards=config['env'].get('normalize_rewards', False),
+        clip_normalized_obs=config['env'].get('clip_normalized_obs', 10.0),
+        clip_normalized_reward=config['env'].get('clip_normalized_reward', 10.0),
+        frame_skip=config['env'].get('frame_skip', 1),
+        smoothness_coef=config['env'].get('smoothness_coef', 0.0),
+        hull_angle_coef=config['env'].get('hull_angle_coef', 0.0),
+        hull_angular_vel_coef=config['env'].get('hull_angular_vel_coef', 0.0),
         seed=config['experiment']['seed']
     )
 
@@ -494,6 +518,14 @@ def evaluate(agent, config: dict, num_episodes: int = 10) -> list:
     eval_env = make_env(
         env_id=config['env']['name'],
         hardcore=config['env']['hardcore'],
+        normalize_observations=config['env'].get('normalize_observations', False),
+        normalize_rewards=config['env'].get('normalize_rewards', False),
+        clip_normalized_obs=config['env'].get('clip_normalized_obs', 10.0),
+        clip_normalized_reward=config['env'].get('clip_normalized_reward', 10.0),
+        frame_skip=config['env'].get('frame_skip', 1),
+        smoothness_coef=config['env'].get('smoothness_coef', 0.0),
+        hull_angle_coef=config['env'].get('hull_angle_coef', 0.0),
+        hull_angular_vel_coef=config['env'].get('hull_angular_vel_coef', 0.0),
         seed=config['experiment']['seed'] + 999  # Different seed for eval
     )
 

@@ -116,19 +116,20 @@ Total observation dimension: 24 continuous values.
 
 \subsubsection{Reward Function}
 
-The reward structure incentivizes forward progress while penalizing energy consumption and failures:
+The reward structure incentivizes forward progress while penalizing energy consumption and failures. At a high level, the per-step reward can be decomposed as:
 
 \[
-r_t = 130 \cdot x_{\text{progress}} - 5.0 \cdot |\theta_{\text{hull}}| - 0.00035 \cdot \sum_{i=0}^{3} |\text{clip}(a_i, 0, 1)| - \mathbb{1}_{\text{fallen}} \times 100
+r_t = r_t^{\text{progress}} + r_t^{\text{posture}} + r_t^{\text{energy}} + r_t^{\text{fail}} \, .
 \]
 
 where:
 \begin{itemize}
-    \item $x_{\text{progress}}$ is the forward position progress (normalized, coefficient 130 targets 300 points for full task)
-    \item $|\theta_{\text{hull}}|$ is the absolute hull angle (keeping head upright is rewarded)
-    \item $\sum_{i=0}^{3} |\text{clip}(a_i, 0, 1)|$ is the energy cost based on motor torque (normalized to approximately -50 for heuristic baseline)
-    \item $\mathbb{1}_{\text{fallen}}$ is an indicator that the hull touched the ground (-100 penalty for failure)
+    \item $r_t^{\text{progress}}$ encourages forward position progress of the agent.
+    \item $r_t^{\text{posture}}$ penalizes large deviations of the hull angle to keep the torso roughly upright.
+    \item $r_t^{\text{energy}}$ penalizes the magnitude of motor torques (energy usage).
+    \item $r_t^{\text{fail}}$ applies a large negative penalty when the hull touches the ground (agent has fallen).
 \end{itemize}
+The exact implemented reward formula, including all coefficients and normalization constants, is given in Section~3.1.3.
 
 Success criteria:
 \begin{itemize}
