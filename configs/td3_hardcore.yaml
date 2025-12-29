@@ -12,17 +12,17 @@ env:
 agent:
   type: "td3"
   hidden_dims: [256, 256]
-  learning_rate: 3.0e-4
-  gamma: 0.99
-  tau: 0.005  # Soft update coefficient
-  target_noise: 0.2  # Standard deviation of noise added to target actions
+  learning_rate: 4.0e-4
+  gamma: 0.98
+  tau: 0.01 #0.005  # Soft update coefficient (poliak parameter)
+  target_noise: 0.2  # Standard deviation of noise added to target actions (policy smoothing std)
   noise_clip: 0.5  # Clipping range for target smoothing noise
-  policy_update_freq: 2  # Update actor every N critic updates (delayed update)
+  policy_update_freq: 2  # Update actor every N critic updates (delayed update) (policy delay)
 
 # Replay buffer settings
 buffer:
-  capacity: 1000000
-  batch_size: 256
+  capacity: 500000 #1000000
+  batch_size: 64 #256
 
 # Training settings
 training:
