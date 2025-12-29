@@ -186,6 +186,9 @@ class BipedalWalker(gym.Env, EzPickle):
 
         self.hardcore = hardcore
 
+        self.bridge_start_x = 0
+        self.bridge_end_x = 0
+
         self.fd_polygon = fixtureDef(
             shape=polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)]),
             friction=FRICTION,
@@ -281,168 +284,221 @@ class BipedalWalker(gym.Env, EzPickle):
         self.legs = []
         self.joints = []
 
-        if hasattr(self, 'bridge_body') and self.bridge_body is not None:
-            self.world.DestroyBody(self.bridge_body)
-            self.bridge_body = None
-            
-        if hasattr(self, 'bridge_anchor') and self.bridge_anchor is not None:
-            self.world.DestroyBody(self.bridge_anchor)
-            self.bridge_anchor = None
+        if hasattr(self, 'bridges'):
+            for bridge in self.bridges:
+                if bridge['body']:
+                    self.world.DestroyBody(bridge['body'])
+                if bridge['anchor']:
+                    self.world.DestroyBody(bridge['anchor'])
+            self.bridges = []
 
     def _generate_terrain(self, hardcore):
-        GRASS, STUMP, STAIRS, PIT, _STATES_, BRIDGE = range(6)
-        state = GRASS
-        velocity = 0.0
-        y = TERRAIN_HEIGHT
-        counter = TERRAIN_STARTPAD
-        oneshot = False
-        self.terrain = []
-        self.terrain_x = []
-        self.terrain_y = []
+            GRASS, STUMP, STAIRS, PIT, BRIDGE, _STATES_  = range(6)
+            state = GRASS
+            velocity = 0.0
+            y = TERRAIN_HEIGHT
+            counter = TERRAIN_STARTPAD
+            oneshot = False
+            self.terrain = []
+            self.terrain_x = []
+            self.terrain_y = []
+            self.bridges = []
 
-        RUNWAY_END_X = 10
-        
-        # Pit/Bridge: Between x=25 and x=32
-        PIT_START_X = 15
-        PIT_END_X = 22
-        PIT_DEPTH = 0.5  # Low enough to fall in
+            BRIDGE_GAP = 7.0 
 
-        stair_steps, stair_width, stair_height = 0, 0, 0
-        original_y = 0
-        for i in range(TERRAIN_LENGTH):
-            x = i * TERRAIN_STEP
-
-            if x < RUNWAY_END_X:
-                velocity = 0.8 * velocity + 0.01 * np.sign(TERRAIN_HEIGHT - y)
-                y += velocity
-                
+            stair_steps, stair_width, stair_height = 0, 0, 0
+            original_y = 0
+            for i in range(TERRAIN_LENGTH):
+                x = i * TERRAIN_STEP
                 self.terrain_x.append(x)
-                self.terrain_y.append(y)
-                continue
 
-            self.terrain_x.append(x)
+                if state == GRASS and not oneshot:
+                    velocity = 0.8 * velocity + 0.01 * np.sign(TERRAIN_HEIGHT - y)
+                    if i > TERRAIN_STARTPAD:
+                        velocity += self.np_random.uniform(-1, 1) / SCALE  # 1
+                    y += velocity
 
-            if hardcore and PIT_START_X < x < PIT_END_X:
-                y = PIT_DEPTH
-                velocity = 0.0
-                
-                self.terrain_x.append(x)
-                self.terrain_y.append(y)
-                continue
-
-            if hardcore and x >= PIT_END_X and y < TERRAIN_HEIGHT:
-                y = TERRAIN_HEIGHT
-                velocity = 0.0
-
-            if state == GRASS and not oneshot:
-                velocity = 0.8 * velocity + 0.01 * np.sign(TERRAIN_HEIGHT - y)
-                if i > TERRAIN_STARTPAD:
-                    velocity += self.np_random.uniform(-1, 1) / SCALE  # 1
-                y += velocity
-
-            elif state == PIT and oneshot:
-                counter = self.np_random.integers(3, 5)
-                poly = [
-                    (x, y),
-                    (x + TERRAIN_STEP, y),
-                    (x + TERRAIN_STEP, y - 4 * TERRAIN_STEP),
-                    (x, y - 4 * TERRAIN_STEP),
-                ]
-                self.fd_polygon.shape.vertices = poly
-                t = self.world.CreateStaticBody(fixtures=self.fd_polygon)
-                t.color1, t.color2 = (255, 255, 255), (153, 153, 153)
-                self.terrain.append(t)
-
-                self.fd_polygon.shape.vertices = [
-                    (p[0] + TERRAIN_STEP * counter, p[1]) for p in poly
-                ]
-                t = self.world.CreateStaticBody(fixtures=self.fd_polygon)
-                t.color1, t.color2 = (255, 255, 255), (153, 153, 153)
-                self.terrain.append(t)
-                counter += 2
-                original_y = y
-
-            elif state == PIT and not oneshot:
-                y = original_y
-                if counter > 1:
-                    y -= 4 * TERRAIN_STEP
-
-            elif state == STUMP and oneshot:
-                counter = self.np_random.integers(1, 3)
-                poly = [
-                    (x, y),
-                    (x + counter * TERRAIN_STEP, y),
-                    (x + counter * TERRAIN_STEP, y + counter * TERRAIN_STEP),
-                    (x, y + counter * TERRAIN_STEP),
-                ]
-                self.fd_polygon.shape.vertices = poly
-                t = self.world.CreateStaticBody(fixtures=self.fd_polygon)
-                t.color1, t.color2 = (255, 255, 255), (153, 153, 153)
-                self.terrain.append(t)
-
-            elif state == STAIRS and oneshot:
-                stair_height = +1 if self.np_random.random() > 0.5 else -1
-                stair_width = self.np_random.integers(4, 5)
-                stair_steps = self.np_random.integers(3, 5)
-                original_y = y
-                for s in range(stair_steps):
+                elif state == PIT and oneshot:
+                    counter = self.np_random.integers(3, 5)
                     poly = [
-                        (
-                            x + (s * stair_width) * TERRAIN_STEP,
-                            y + (s * stair_height) * TERRAIN_STEP,
-                        ),
-                        (
-                            x + ((1 + s) * stair_width) * TERRAIN_STEP,
-                            y + (s * stair_height) * TERRAIN_STEP,
-                        ),
-                        (
-                            x + ((1 + s) * stair_width) * TERRAIN_STEP,
-                            y + (-1 + s * stair_height) * TERRAIN_STEP,
-                        ),
-                        (
-                            x + (s * stair_width) * TERRAIN_STEP,
-                            y + (-1 + s * stair_height) * TERRAIN_STEP,
-                        ),
+                        (x, y),
+                        (x + TERRAIN_STEP, y),
+                        (x + TERRAIN_STEP, y - 4 * TERRAIN_STEP),
+                        (x, y - 4 * TERRAIN_STEP),
                     ]
                     self.fd_polygon.shape.vertices = poly
                     t = self.world.CreateStaticBody(fixtures=self.fd_polygon)
                     t.color1, t.color2 = (255, 255, 255), (153, 153, 153)
                     self.terrain.append(t)
-                counter = stair_steps * stair_width
 
-            elif state == STAIRS and not oneshot:
-                s = stair_steps * stair_width - counter - stair_height
-                n = s / stair_width
-                y = original_y + (n * stair_height) * TERRAIN_STEP
+                    self.fd_polygon.shape.vertices = [
+                        (p[0] + TERRAIN_STEP * counter, p[1]) for p in poly
+                    ]
+                    t = self.world.CreateStaticBody(fixtures=self.fd_polygon)
+                    t.color1, t.color2 = (255, 255, 255), (153, 153, 153)
+                    self.terrain.append(t)
+                    counter += 2
+                    original_y = y
 
-            oneshot = False
-            self.terrain_y.append(y)
-            counter -= 1
-            if counter == 0:
-                counter = self.np_random.integers(TERRAIN_GRASS / 2, TERRAIN_GRASS)
-                if state == GRASS and hardcore:
-                    state = self.np_random.integers(1, _STATES_)
-                    oneshot = True
-                else:
-                    state = GRASS
-                    oneshot = True
+                elif state == PIT and not oneshot:
+                    y = original_y
+                    if counter > 1:
+                        y -= 4 * TERRAIN_STEP
 
-        self.terrain_poly = []
-        for i in range(TERRAIN_LENGTH - 1):
-            poly = [
-                (self.terrain_x[i], self.terrain_y[i]),
-                (self.terrain_x[i + 1], self.terrain_y[i + 1]),
-            ]
-            self.fd_edge.shape.vertices = poly
-            t = self.world.CreateStaticBody(fixtures=self.fd_edge)
-            color = (76, 255 if i % 2 == 0 else 204, 76)
-            t.color1 = color
-            t.color2 = color
-            self.terrain.append(t)
-            color = (102, 153, 76)
-            poly += [(poly[1][0], 0), (poly[0][0], 0)]
-            self.terrain_poly.append((poly, color))
-        self.terrain.reverse()
+                elif state == STUMP and oneshot:
+                    counter = self.np_random.integers(1, 3)
+                    poly = [
+                        (x, y),
+                        (x + counter * TERRAIN_STEP, y),
+                        (x + counter * TERRAIN_STEP, y + counter * TERRAIN_STEP),
+                        (x, y + counter * TERRAIN_STEP),
+                    ]
+                    self.fd_polygon.shape.vertices = poly
+                    t = self.world.CreateStaticBody(fixtures=self.fd_polygon)
+                    t.color1, t.color2 = (255, 255, 255), (153, 153, 153)
+                    self.terrain.append(t)
+
+                elif state == STAIRS and oneshot:
+                    stair_height = +1 if self.np_random.random() > 0.5 else -1
+                    stair_width = self.np_random.integers(4, 5)
+                    stair_steps = self.np_random.integers(3, 5)
+                    original_y = y
+                    for s in range(stair_steps):
+                        poly = [
+                            (
+                                x + (s * stair_width) * TERRAIN_STEP,
+                                y + (s * stair_height) * TERRAIN_STEP,
+                            ),
+                            (
+                                x + ((1 + s) * stair_width) * TERRAIN_STEP,
+                                y + (s * stair_height) * TERRAIN_STEP,
+                            ),
+                            (
+                                x + ((1 + s) * stair_width) * TERRAIN_STEP,
+                                y + (-1 + s * stair_height) * TERRAIN_STEP,
+                            ),
+                            (
+                                x + (s * stair_width) * TERRAIN_STEP,
+                                y + (-1 + s * stair_height) * TERRAIN_STEP,
+                            ),
+                        ]
+                        self.fd_polygon.shape.vertices = poly
+                        t = self.world.CreateStaticBody(fixtures=self.fd_polygon)
+                        t.color1, t.color2 = (255, 255, 255), (153, 153, 153)
+                        self.terrain.append(t)
+                    counter = stair_steps * stair_width
+
+                elif state == STAIRS and not oneshot:
+                    s = stair_steps * stair_width - counter - stair_height
+                    n = s / stair_width
+                    y = original_y + (n * stair_height) * TERRAIN_STEP
+
+                elif state == BRIDGE and oneshot:
+                    counter = BRIDGE_GAP
+                    
+                    poly = [
+                        (x, y),
+                        (x + TERRAIN_STEP, y),
+                        (x + TERRAIN_STEP, y - 4 * TERRAIN_STEP),
+                        (x, y - 4 * TERRAIN_STEP),
+                    ]
+                    self.fd_polygon.shape.vertices = poly
+                    t = self.world.CreateStaticBody(fixtures=self.fd_polygon)
+                    t.color1, t.color2 = (255, 255, 255), (153, 153, 153)
+                    self.terrain.append(t)
+
+                    poly_right = [
+                        (p[0] + TERRAIN_STEP * counter, p[1]) for p in poly
+                    ]
+                    self.fd_polygon.shape.vertices = poly_right
+                    t = self.world.CreateStaticBody(fixtures=self.fd_polygon)
+                    t.color1, t.color2 = (255, 255, 255), (153, 153, 153)
+                    self.terrain.append(t)
+                    
+                    BRIDGE_LEN = counter * TERRAIN_STEP
+                    THICKNESS = 0.1
+                    X_ANCHOR = x + TERRAIN_STEP  # The exact edge of the left cliff
+                    Y_ANCHOR = y                 # The surface level
+                    
+                    b_body = self.world.CreateDynamicBody(
+                        position=(X_ANCHOR + 2, Y_ANCHOR + 4), 
+                        angle=1.57,
+                        fixtures=fixtureDef(
+                            shape=polygonShape(box=(BRIDGE_LEN / 2, THICKNESS)),
+                            density=5.0, friction=10.0, 
+                        )
+                    )
+                    b_body.color1 = (0.5, 0.3, 0.1)
+                    b_body.color2 = (0.5, 0.3, 0.1)
+
+                    b_anchor = self.world.CreateStaticBody(
+                        position=(X_ANCHOR, Y_ANCHOR),
+                        shapes=polygonShape(box=(0.1, 0.1)),
+                    )
+                    b_anchor.color1 = (0.5, 0.3, 0.1)
+                    b_anchor.color2 = (0.5, 0.3, 0.1)
+
+                    joint_def = revoluteJointDef(
+                        bodyA=b_anchor,
+                        bodyB=b_body,
+                        localAnchorA=(0, 0),
+                        localAnchorB=(-BRIDGE_LEN / 2, 0), 
+                        enableMotor=True,
+                        maxMotorTorque=4000.0,
+                        motorSpeed=0.0,
+                        enableLimit=True,
+                        lowerAngle=-2, 
+                        upperAngle=2,
+                        collideConnected=False 
+                    )
+                    b_joint = self.world.CreateJoint(joint_def)
+
+                    self.bridges.append({
+                        'body': b_body,
+                        'anchor': b_anchor,
+                        'joint': b_joint,
+                        'timer': 0,
+                        'active': False
+                    })
+
+                    counter += 2
+                    original_y = y
+
+                elif state == BRIDGE and not oneshot:
+                     # This block runs while the loop is "skipping" the gap
+                     y = original_y
+                     # Dig the hole for the physics engine terrain_y list
+                     if counter > 1:
+                         y -= 4 * TERRAIN_STEP
+
+                oneshot = False
+                self.terrain_y.append(y)
+                counter -= 1
+                if counter == 0:
+                    counter = self.np_random.integers(TERRAIN_GRASS / 2, TERRAIN_GRASS)
+                    if state == GRASS and hardcore:
+                        state = self.np_random.integers(1, _STATES_)
+                        oneshot = True
+                    else:
+                        state = GRASS
+                        oneshot = True
+
+            self.terrain_poly = []
+            for i in range(TERRAIN_LENGTH - 1):
+                poly = [
+                    (self.terrain_x[i], self.terrain_y[i]),
+                    (self.terrain_x[i + 1], self.terrain_y[i + 1]),
+                ]
+                self.fd_edge.shape.vertices = poly
+                t = self.world.CreateStaticBody(fixtures=self.fd_edge)
+                color = (76, 255 if i % 2 == 0 else 204, 76)
+                t.color1 = color
+                t.color2 = color
+                self.terrain.append(t)
+                color = (102, 153, 76)
+                poly += [(poly[1][0], 0), (poly[0][0], 0)]
+                self.terrain_poly.append((poly, color))
+            self.terrain.reverse()
 
     def _generate_clouds(self):
         # Sorry for the clouds, couldn't resist
@@ -481,8 +537,6 @@ class BipedalWalker(gym.Env, EzPickle):
         self.lidar_render = 0
 
         self._generate_terrain(self.hardcore)
-        if self.hardcore:
-            self._create_bridge()
         self._generate_clouds()
 
         init_x = TERRAIN_STEP * TERRAIN_STARTPAD / 2
@@ -546,10 +600,6 @@ class BipedalWalker(gym.Env, EzPickle):
 
         self.drawlist = self.terrain + self.legs + [self.hull]
 
-        if self.hardcore and hasattr(self, 'bridge_body'):
-            self.drawlist.append(self.bridge_body)
-            self.drawlist.append(self.bridge_anchor)
-
         class LidarCallback(Box2D.b2.rayCastCallback):
             def ReportFixture(self, fixture, point, normal, fraction):
                 if (fixture.filterData.categoryBits & 1) == 0:
@@ -562,66 +612,6 @@ class BipedalWalker(gym.Env, EzPickle):
         if self.render_mode == "human":
             self.render()
         return self.step(np.array([0, 0, 0, 0]))[0], {}
-    
-    def _create_bridge(self):
-        # --- Configuration ---
-        BRIDGE_LEN = 6.0       # Total length (Must cover the 7-unit gap)
-        THICKNESS = 0.3        # Half-thickness (so actual thickness is 1.0)
-        X_ANCHOR = 15          # The left edge of the pit (PIT_START_X)
-        Y_ANCHOR = TERRAIN_HEIGHT           # The floor height (TERRAIN_HEIGHT)
-
-        # --- 1. Define the Bridge Shape (Horizontal Standard) ---
-        # We define it as if it were lying flat on the ground.
-        # box=(half_width, half_height)
-        # This creates a box from x=-4.5 to x=+4.5
-        bridge_shape = polygonShape(box=(BRIDGE_LEN / 2, THICKNESS))
-
-        # --- 2. Calculate the Spawn Position ---
-        start_pos = (X_ANCHOR, Y_ANCHOR + 4)
-
-        # --- 3. Create the Bridge Body ---
-        self.bridge_body = self.world.CreateDynamicBody(
-            position=start_pos, 
-            angle=1.1,  # 90 Degrees (Vertical)
-            fixtures=fixtureDef(
-                shape=bridge_shape,
-                density=2.0,   # Heavy enough to fall smoothly
-                friction=5.0,  # High friction so robot can walk on it
-            )
-        )
-        self.bridge_body.color1 = (0.5, 0.3, 0.1)
-        self.bridge_body.color2 = (0.5, 0.3, 0.1)
-
-        # --- 4. Create the Anchor (Visual Only) ---
-        self.bridge_anchor = self.world.CreateStaticBody(
-            position=(X_ANCHOR, Y_ANCHOR),
-            shapes=polygonShape(box=(0.3, 0.3)), # A small block to mark the hinge
-        )
-        self.bridge_anchor.color1 = (0.2, 0.2, 0.2)
-        self.bridge_anchor.color2 = (0.2, 0.2, 0.2)
-
-        # --- 5. The Joint ---
-        joint_def = revoluteJointDef(
-            bodyA=self.bridge_anchor,
-            bodyB=self.bridge_body,
-            
-            # Point on Anchor: The center of the static block (0,0)
-            localAnchorA=(0, 0),
-            
-            localAnchorB=(-BRIDGE_LEN / 2, 0), 
-            
-            enableMotor=True,
-            maxMotorTorque=4000.0, # Strong torque to hold it vertical
-            motorSpeed=0.0,
-            enableLimit=True,
-            lowerAngle= -2,  # Stop when flat (0 degrees)
-            upperAngle= 2,     # Stop when vertical (90 degrees)
-            collideConnected=False
-        )
-        self.bridge_joint = self.world.CreateJoint(joint_def)
-        
-        # Initialize Timer
-        self.bridge_timer = 0
 
     def step(self, action: np.ndarray):
         assert self.hull is not None
@@ -711,20 +701,33 @@ class BipedalWalker(gym.Env, EzPickle):
             terminated = True
 
         # BRIDGE START
-        if self.hardcore and hasattr(self, 'bridge_joint'):
-            self.bridge_timer += 1
+        if hasattr(self, 'bridges'):
+            robot_x = self.hull.position[0]
             
-            if self.bridge_timer < 50: # BRIDGE TIMER
-                # HOLD UP
-                self.bridge_joint.motorSpeed = 2.0 
-            else:
-                # LET GO (Gravity handles the fall)
-                self.bridge_body.Awake = True
-                self.bridge_joint.motorSpeed = -1.0 # Slight push to ensure it goes down
+            for bridge in self.bridges:
+                # Get the x-position of this specific bridge anchor
+                bridge_x = bridge['anchor'].position[0]
                 
-                # Once it hits the floor limit (0), turn off motor
-                if self.bridge_body.angle <= 0.02:
-                    self.bridge_joint.motorSpeed = 0
+                # ACTIVATION LOGIC:
+                # If robot is within 10 units of the bridge, START the timer
+                if not bridge['active'] and (bridge_x - robot_x) < 10.0:
+                    bridge['active'] = True
+                
+                # If active, run the timer logic
+                if bridge['active']:
+                    bridge['timer'] += 1
+                    
+                    if bridge['timer'] < 300: # Wait phase
+                        bridge['joint'].motorSpeed = 2.0
+                        bridge['joint'].maxMotorTorque = 4000.0
+                    else: # Lower phase
+                        bridge['body'].Awake = True
+                        bridge['joint'].motorSpeed = -2.0
+                        bridge['joint'].maxMotorTorque = 5000.0
+                        
+                        if bridge['body'].angle <= 0.02:
+                            bridge['joint'].motorSpeed = 0
+                            bridge['body'].angle = 0
         # BRIDGE END
 
         if self.render_mode == "human":
@@ -819,7 +822,14 @@ class BipedalWalker(gym.Env, EzPickle):
                     width=1,
                 )
 
-        for obj in self.drawlist:
+        draw_objects = [self.hull] + self.legs + self.terrain
+
+        if hasattr(self, 'bridges'):
+            for bridge in self.bridges:
+                if bridge['body']: draw_objects.append(bridge['body'])
+                if bridge['anchor']: draw_objects.append(bridge['anchor'])
+
+        for obj in draw_objects:
             for f in obj.fixtures:
                 trans = f.body.transform
                 if type(f.shape) is circleShape:
@@ -852,6 +862,40 @@ class BipedalWalker(gym.Env, EzPickle):
                             end_pos=path[1],
                             color=obj.color1,
                         )
+
+        # for obj in self.drawlist:
+        #     for f in obj.fixtures:
+        #         trans = f.body.transform
+        #         if type(f.shape) is circleShape:
+        #             pygame.draw.circle(
+        #                 self.surf,
+        #                 color=obj.color1,
+        #                 center=trans * f.shape.pos * SCALE,
+        #                 radius=f.shape.radius * SCALE,
+        #             )
+        #             pygame.draw.circle(
+        #                 self.surf,
+        #                 color=obj.color2,
+        #                 center=trans * f.shape.pos * SCALE,
+        #                 radius=f.shape.radius * SCALE,
+        #             )
+        #         else:
+        #             path = [trans * v * SCALE for v in f.shape.vertices]
+        #             if len(path) > 2:
+        #                 pygame.draw.polygon(self.surf, color=obj.color1, points=path)
+        #                 gfxdraw.aapolygon(self.surf, path, obj.color1)
+        #                 path.append(path[0])
+        #                 pygame.draw.polygon(
+        #                     self.surf, color=obj.color2, points=path, width=1
+        #                 )
+        #                 gfxdraw.aapolygon(self.surf, path, obj.color2)
+        #             else:
+        #                 pygame.draw.aaline(
+        #                     self.surf,
+        #                     start_pos=path[0],
+        #                     end_pos=path[1],
+        #                     color=obj.color1,
+        #                 )
 
         flagy1 = TERRAIN_HEIGHT * SCALE
         flagy2 = flagy1 + 50
