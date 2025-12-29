@@ -10,7 +10,7 @@ import seaborn as sns
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.agents import PPOAgent, SACAgent
+from src.agents import PPOAgent, SACAgent, TD3Agent
 from src.envs import make_env
 from src.utils import set_seed
 
@@ -43,6 +43,8 @@ def create_agent(config: dict, observation_dim: int, action_dim: int):
         return PPOAgent(**common_args)
     elif agent_type == 'sac':
         return SACAgent(**common_args)
+    elif agent_type == 'td3':
+        return TD3Agent(**common_args)
     else:
         raise ValueError(f"Unknown agent type: {agent_type}")
 
