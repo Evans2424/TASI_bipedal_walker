@@ -1,0 +1,52 @@
+# TD3 Configuration for Bipedal Walker (Conservative - More Exploration)
+
+# Environment settings
+env:
+  name: "BipedalWalker-v3"
+  hardcore: false
+  reward_scale: 1.0
+  clip_observations: false
+  clip_actions: true
+
+# Agent settings
+agent:
+  type: "td3"
+  hidden_dims: [256, 256]
+  learning_rate: 1.0e-4  # Lower learning rate
+  gamma: 0.995  # Higher discount factor (longer horizon)
+  tau: 0.001  # More conservative target updates
+  target_noise: 0.3  # More noise in target actions for exploration
+  noise_clip: 0.75  # Larger clipping range
+  policy_update_freq: 3  # Less frequent policy updates
+
+# Replay buffer settings
+buffer:
+  capacity: 1000000
+  batch_size: 128  # Smaller batches for more stable learning
+
+# Training settings
+training:
+  total_timesteps: 1500000
+  learning_starts: 20000  # More exploration before learning
+  train_frequency: 1
+  gradient_steps: 1
+  eval_frequency: 10000
+  eval_episodes: 10
+  save_frequency: 50000
+  log_frequency: 1000
+
+# Exploration settings
+exploration:
+  initial_random_steps: 20000
+
+# Experiment settings
+experiment:
+  name: "td3_bipedal_walker_conservative"
+  seed: 42
+  device: "cpu"
+
+# Paths
+paths:
+  checkpoints: "experiments/checkpoints"
+  logs: "experiments/logs"
+  videos: "experiments/videos"
