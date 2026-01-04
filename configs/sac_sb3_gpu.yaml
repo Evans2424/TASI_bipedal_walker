@@ -1,6 +1,6 @@
-# Stable-Baselines3 SAC GPU-Optimized Configuration
-# Production-ready implementation with GPU acceleration
-# Expected time: 30min - 2 hours (5-10x faster than CPU)
+# Stable-Baselines3 SAC Configuration (macOS Apple Silicon Optimized)
+# Production-ready implementation with MPS (Metal Performance Shaders) acceleration
+# Expected time: 30min - 2 hours on Apple Silicon
 
 # Environment settings
 env:
@@ -9,6 +9,11 @@ env:
   reward_scale: 1.0
   clip_observations: false
   clip_actions: true
+  num_eval_envs: 5  # Number of environments for evaluation
+  normalize_observations: true  # Use VecNormalize for obs
+  normalize_rewards: true  # Use VecNormalize for rewards
+  clip_normalized_obs: 10.0  # Clip normalized observations
+  clip_normalized_reward: 10.0  # Clip normalized rewards
 
 # Agent settings - SB3 SAC optimized
 agent:
@@ -24,7 +29,7 @@ agent:
 # Replay buffer settings
 buffer:
   capacity: 1000000
-  batch_size: 512  # GPU optimized
+  batch_size: 256  # Reduced for macOS - increase to 512 if you have sufficient memory
 
 # Training settings
 training:
@@ -41,17 +46,16 @@ training:
 exploration:
   initial_random_steps: 10000
 
-# GPU-specific settings
+# Acceleration settings (macOS optimized)
 gpu:
-  num_parallel_envs: 16  # Parallel environments
-  mixed_precision: true
-  pin_memory: true
+  num_parallel_envs: 8  # Reduced from 16 for macOS - increase if you have M2/M3 Pro/Max/Ultra
+  # Note: mixed_precision and pin_memory are CUDA-specific and not used on macOS
 
 # Experiment settings
 experiment:
   name: "sac_sb3_gpu"
   seed: 45
-  device: "cuda:1"
+  device: "mps"  # Metal Performance Shaders for Apple Silicon (auto-fallback to CPU if unavailable)
 
 # Paths
 paths:

@@ -38,9 +38,6 @@ ENV/
 *.ipynb
 
 # Experiments
-experiments/checkpoints/
-experiments/logs/
-experiments/videos/
 *.pt
 *.pth
 
