@@ -52,3 +52,6 @@ Thumbs.db
 *.log
 .coverage
 htmlcov/
+
+experiments/checkpoints/sac_elite_unified_hardcore_gpu_custom_bridges
+experiments/checkpoints/sac_elite_unified_hardcore_gpu_custom_bridges_OLD_no_bridge_fix
