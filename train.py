@@ -7,7 +7,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-from src.agents import PPOAgent, SACAgent
+from src.agents import PPOAgent, SACAgent, TD3Agent
 from src.envs import make_env
 from src.utils import ReplayBuffer, RolloutBuffer, Logger, set_seed
 
@@ -69,6 +69,14 @@ def create_agent(config: dict, observation_dim: int, action_dim: int):
             automatic_entropy_tuning=agent_config['automatic_entropy_tuning'],
             target_entropy=agent_config.get('target_entropy')
         )
+    elif agent_type == 'td3':
+        return TD3Agent(
+            **common_args,
+            tau=agent_config['tau'],
+            target_noise=agent_config['target_noise'],
+            noise_clip=agent_config['noise_clip'],
+            policy_update_freq=agent_config['policy_update_freq']
+        )
     else:
         raise ValueError(f"Unknown agent type: {agent_type}")
 
@@ -89,6 +97,14 @@ def train_ppo(config: dict):
         reward_scale=config['env']['reward_scale'],
         clip_observations=config['env']['clip_observations'],
         clip_actions=config['env']['clip_actions'],
+        normalize_observations=config['env'].get('normalize_observations', False),
+        normalize_rewards=config['env'].get('normalize_rewards', False),
+        clip_normalized_obs=config['env'].get('clip_normalized_obs', 10.0),
+        clip_normalized_reward=config['env'].get('clip_normalized_reward', 10.0),
+        frame_skip=config['env'].get('frame_skip', 1),
+        smoothness_coef=config['env'].get('smoothness_coef', 0.0),
+        hull_angle_coef=config['env'].get('hull_angle_coef', 0.0),
+        hull_angular_vel_coef=config['env'].get('hull_angular_vel_coef', 0.0),
         seed=config['experiment']['seed']
     )
 
@@ -216,6 +232,158 @@ def train_sac(config: dict):
         reward_scale=config['env']['reward_scale'],
         clip_observations=config['env']['clip_observations'],
         clip_actions=config['env']['clip_actions'],
+        normalize_observations=config['env'].get('normalize_observations', False),
+        normalize_rewards=config['env'].get('normalize_rewards', False),
+        clip_normalized_obs=config['env'].get('clip_normalized_obs', 10.0),
+        clip_normalized_reward=config['env'].get('clip_normalized_reward', 10.0),
+        frame_skip=config['env'].get('frame_skip', 1),
+        smoothness_coef=config['env'].get('smoothness_coef', 0.0),
+        hull_angle_coef=config['env'].get('hull_angle_coef', 0.0),
+        hull_angular_vel_coef=config['env'].get('hull_angular_vel_coef', 0.0),
+        seed=config['experiment']['seed']
+    )
+
+    # Get dimensions
+    observation_dim = env.observation_space.shape[0]
+    action_dim = env.action_space.shape[0]
+
+    # Create agent
+    agent = create_agent(config, observation_dim, action_dim)
+
+    # Create replay buffer
+    buffer = ReplayBuffer(
+        observation_dim,
+        action_dim,
+        capacity=config['buffer']['capacity'],
+        seed=config['experiment']['seed']
+    )
+
+    # Create logger
+    logger = Logger(config['paths']['logs'], config['experiment']['name'])
+    logger.save_config(config)
+
+    # Training loop
+    observation, _ = env.reset()
+    episode_reward = 0
+    episode_length = 0
+    episode_count = 0
+
+    total_timesteps = config['training']['total_timesteps']
+    learning_starts = config['training']['learning_starts']
+    batch_size = config['buffer']['batch_size']
+
+    pbar = tqdm(total=total_timesteps, desc="Training")
+
+    for step in range(total_timesteps):
+        # Select action (random for initial exploration)
+        if step < config['exploration']['initial_random_steps']:
+            action = env.action_space.sample()
+        else:
+            action = agent.select_action(observation, deterministic=False)
+
+        # Take step
+        next_observation, reward, terminated, truncated, info = env.step(action)
+        done = terminated or truncated
+
+        # Store transition
+        buffer.add(observation, action, reward, next_observation, done)
+
+        episode_reward += reward
+        episode_length += 1
+
+        # Update observation
+        observation = next_observation
+
+        # Handle episode end
+        if done:
+            logger.log_episode(episode_reward, episode_length, step)
+            episode_count += 1
+
+            observation, _ = env.reset()
+            episode_reward = 0
+            episode_length = 0
+
+            # Update progress bar
+            stats = logger.get_stats()
+            if stats:
+                pbar.set_postfix({
+                    'episodes': episode_count,
+                    'mean_reward_100': f"{stats.get('mean_reward_100', 0):.2f}"
+                })
+
+        # Update agent
+        if step >= learning_starts:
+            batch = buffer.sample(batch_size)
+            metrics = agent.update(batch)
+
+            if step % config['training']['log_frequency'] == 0:
+                logger.log_metrics(metrics, step, prefix="train")
+
+        # Evaluation
+        if step % config['training']['eval_frequency'] == 0 and step > 0:
+            eval_rewards = evaluate(agent, config, config['training']['eval_episodes'])
+            logger.log_scalar("eval/mean_reward", np.mean(eval_rewards), step)
+            logger.log_scalar("eval/std_reward", np.std(eval_rewards), step)
+
+            print(f"\nStep {step}: Eval mean reward = {np.mean(eval_rewards):.2f} +/- {np.std(eval_rewards):.2f}")
+
+        # Save checkpoint
+        if step % config['training']['save_frequency'] == 0 and step > 0:
+            checkpoint_dir = os.path.join(config['paths']['checkpoints'], config['experiment']['name'])
+            os.makedirs(checkpoint_dir, exist_ok=True)
+            checkpoint_path = os.path.join(checkpoint_dir, f"checkpoint_{step}.pt")
+            agent.save(checkpoint_path)
+            print(f"\nSaved checkpoint to {checkpoint_path}")
+
+        pbar.update(1)
+
+    pbar.close()
+
+    # Final save
+    checkpoint_dir = os.path.join(config['paths']['checkpoints'], config['experiment']['name'])
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    final_path = os.path.join(checkpoint_dir, "final_model.pt")
+    agent.save(final_path)
+
+    print(f"\nTraining completed! Final model saved to {final_path}")
+
+    # Clean up intermediate checkpoints
+    print("\nCleaning up intermediate checkpoints...")
+    for file in os.listdir(checkpoint_dir):
+        if file.startswith("checkpoint_") and file.endswith(".pt"):
+            checkpoint_path = os.path.join(checkpoint_dir, file)
+            os.remove(checkpoint_path)
+            print(f"Removed {file}")
+    print("Cleanup completed! Only final_model.pt is kept.")
+
+    env.close()
+    logger.close()
+
+
+def train_td3(config: dict):
+    """Train using TD3 algorithm.
+
+    Args:
+        config: Configuration dictionary
+    """
+    # Set seed
+    set_seed(config['experiment']['seed'])
+
+    # Create environment
+    env = make_env(
+        env_id=config['env']['name'],
+        hardcore=config['env']['hardcore'],
+        reward_scale=config['env']['reward_scale'],
+        clip_observations=config['env']['clip_observations'],
+        clip_actions=config['env']['clip_actions'],
+        normalize_observations=config['env'].get('normalize_observations', False),
+        normalize_rewards=config['env'].get('normalize_rewards', False),
+        clip_normalized_obs=config['env'].get('clip_normalized_obs', 10.0),
+        clip_normalized_reward=config['env'].get('clip_normalized_reward', 10.0),
+        frame_skip=config['env'].get('frame_skip', 1),
+        smoothness_coef=config['env'].get('smoothness_coef', 0.0),
+        hull_angle_coef=config['env'].get('hull_angle_coef', 0.0),
+        hull_angular_vel_coef=config['env'].get('hull_angular_vel_coef', 0.0),
         seed=config['experiment']['seed']
     )
 
@@ -350,6 +518,14 @@ def evaluate(agent, config: dict, num_episodes: int = 10) -> list:
     eval_env = make_env(
         env_id=config['env']['name'],
         hardcore=config['env']['hardcore'],
+        normalize_observations=config['env'].get('normalize_observations', False),
+        normalize_rewards=config['env'].get('normalize_rewards', False),
+        clip_normalized_obs=config['env'].get('clip_normalized_obs', 10.0),
+        clip_normalized_reward=config['env'].get('clip_normalized_reward', 10.0),
+        frame_skip=config['env'].get('frame_skip', 1),
+        smoothness_coef=config['env'].get('smoothness_coef', 0.0),
+        hull_angle_coef=config['env'].get('hull_angle_coef', 0.0),
+        hull_angular_vel_coef=config['env'].get('hull_angular_vel_coef', 0.0),
         seed=config['experiment']['seed'] + 999  # Different seed for eval
     )
 
@@ -404,6 +580,8 @@ def main():
         train_ppo(config)
     elif agent_type == 'sac':
         train_sac(config)
+    elif agent_type == 'td3':
+        train_td3(config)
     else:
         raise ValueError(f"Unknown agent type: {agent_type}")
 
