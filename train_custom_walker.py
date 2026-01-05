@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 # Import custom walker environment
 from custom_walker import BipedalWalker
+from elite_hardcore_bridge_wrapper import EliteHardcoreBridgeWrapper
 
 from src.agents import TD3Agent
 from src.envs.env_wrapper import BipedalWalkerWrapper
@@ -30,9 +31,10 @@ def make_custom_env(
     smoothness_coef: float = 0.0,
     hull_angle_coef: float = 0.0,
     hull_angular_vel_coef: float = 0.0,
+    use_bridge_wrapper: bool = True,
     seed: int = None
 ):
-    """Create custom walker environment with wrapper.
+    """Create custom walker environment with bridge-aware wrapper.
     
     Args:
         hardcore: Use hardcore mode
@@ -48,6 +50,7 @@ def make_custom_env(
         smoothness_coef: Penalty coefficient for action smoothness
         hull_angle_coef: Penalty coefficient for hull angle
         hull_angular_vel_coef: Penalty coefficient for hull angular velocity
+        use_bridge_wrapper: Use bridge-aware wrapper for better bridge learning
         seed: Random seed
         
     Returns:
@@ -60,21 +63,35 @@ def make_custom_env(
     if seed is not None:
         env.reset(seed=seed)
     
-    # Wrap environment with custom wrapper
-    env = BipedalWalkerWrapper(
-        env,
-        reward_scale=reward_scale,
-        clip_observations=clip_observations,
-        clip_actions=clip_actions,
-        normalize_observations=normalize_observations,
-        normalize_rewards=normalize_rewards,
-        clip_normalized_obs=clip_normalized_obs,
-        clip_normalized_reward=clip_normalized_reward,
-        frame_skip=frame_skip,
-        smoothness_coef=smoothness_coef,
-        hull_angle_coef=hull_angle_coef,
-        hull_angular_vel_coef=hull_angular_vel_coef
-    )
+    # Apply bridge-aware wrapper for better bridge learning
+    if use_bridge_wrapper:
+        env = EliteHardcoreBridgeWrapper(
+            env,
+            frame_skip=frame_skip,
+            smoothness_coef=smoothness_coef,
+            hull_angle_coef=hull_angle_coef,
+            hull_angular_vel_coef=hull_angular_vel_coef,
+            waiting_velocity_threshold=0.1,
+            waiting_angle_threshold=0.3,
+            penalty_reduction_factor=0.2,  # Reduce penalties to 20% during wait
+            patience_bonus=0.005,
+        )
+    else:
+        # Fallback to original wrapper
+        env = BipedalWalkerWrapper(
+            env,
+            reward_scale=reward_scale,
+            clip_observations=clip_observations,
+            clip_actions=clip_actions,
+            normalize_observations=normalize_observations,
+            normalize_rewards=normalize_rewards,
+            clip_normalized_obs=clip_normalized_obs,
+            clip_normalized_reward=clip_normalized_reward,
+            frame_skip=frame_skip,
+            smoothness_coef=smoothness_coef,
+            hull_angle_coef=hull_angle_coef,
+            hull_angular_vel_coef=hull_angular_vel_coef
+        )
     
     return env
 
@@ -173,7 +190,7 @@ def train_td3(config: dict):
     # Set seed
     set_seed(config['experiment']['seed'])
 
-    # Create CUSTOM environment
+    # Create CUSTOM environment with bridge-aware wrapper
     env = make_custom_env(
         hardcore=config['env']['hardcore'],
         reward_scale=config['env']['reward_scale'],
@@ -181,6 +198,15 @@ def train_td3(config: dict):
         clip_actions=config['env']['clip_actions'],
         normalize_observations=config['env'].get('normalize_observations', False),
         normalize_rewards=config['env'].get('normalize_rewards', False),
+        clip_normalized_obs=config['env'].get('clip_normalized_obs', 10.0),
+        clip_normalized_reward=config['env'].get('clip_normalized_reward', 10.0),
+        frame_skip=config['env'].get('frame_skip', 1),
+        smoothness_coef=config['env'].get('smoothness_coef', 0.2),
+        hull_angle_coef=config['env'].get('hull_angle_coef', 0.1),
+        hull_angular_vel_coef=config['env'].get('hull_angular_vel_coef', 0.05),
+        use_bridge_wrapper=True,  # Enable bridge-aware wrapper
+        seed=config['experiment']['seed']
+    )
         clip_normalized_obs=config['env'].get('clip_normalized_obs', 10.0),
         clip_normalized_reward=config['env'].get('clip_normalized_reward', 10.0),
         frame_skip=config['env'].get('frame_skip', 1),
