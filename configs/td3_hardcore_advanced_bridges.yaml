@@ -57,6 +57,7 @@ experiment:
   name: "td3_hardcore_advanced_bridges"
   seed: 42
   device: "cpu"  # "cuda", "mps" (for Mac M1/M2/M3), or "cpu"
+  load_checkpoint: "experiments/checkpoints/td3_hardcore_advanced/final_model.pt"  # Load pre-trained hardcore model
 
 # Paths
 paths:

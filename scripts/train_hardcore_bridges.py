@@ -2,15 +2,19 @@
 
 import os
 import sys
+from pathlib import Path
 import argparse
 import yaml
 import torch
 import numpy as np
 from tqdm import tqdm
 
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 # Import custom walker environment
-from custom_walker import BipedalWalker
-from elite_hardcore_bridge_wrapper import EliteHardcoreBridgeWrapper
+from src.envs.custom_walker import BipedalWalker
+from src.envs.elite_hardcore_bridge_wrapper import EliteHardcoreBridgeWrapper
 
 from src.agents import TD3Agent
 from src.envs.env_wrapper import BipedalWalkerWrapper

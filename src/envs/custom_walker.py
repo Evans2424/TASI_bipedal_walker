@@ -86,6 +86,20 @@ class ContactDetector(contactListener):
         self.env = env
 
     def BeginContact(self, contact):
+        # Check for bridge collision
+        if hasattr(self.env, 'bridges'):
+            for bridge in self.env.bridges:
+                bridge_body = bridge['body']
+                # If hull hits an upright bridge (not yet lowered), terminate episode
+                if (self.env.hull == contact.fixtureA.body or self.env.hull == contact.fixtureB.body):
+                    if (bridge_body == contact.fixtureA.body or bridge_body == contact.fixtureB.body):
+                        # Check if bridge is still vertical (not lowered)
+                        if abs(bridge_body.angle) > 0.5:  # Still mostly vertical
+                            self.env.bridge_collision = True
+                            self.env.game_over = True
+                            return
+        
+        # Normal hull collision detection (ground, obstacles, etc)
         if (
             self.env.hull == contact.fixtureA.body
             or self.env.hull == contact.fixtureB.body
@@ -183,11 +197,15 @@ class BipedalWalker(gym.Env, EzPickle):
         self.hull: Box2D.b2Body | None = None
 
         self.prev_shaping = None
+        self.bridge_collision = False  # Track bridge collisions
+        self.near_bridge = False  # Track if agent is near a bridge
 
         self.hardcore = hardcore
 
         self.bridge_start_x = 0
         self.bridge_end_x = 0
+        self.bridge_collision = False  # Track bridge collisions
+        self.near_bridge = False  # Track if agent is near a bridge
 
         self.fd_polygon = fixtureDef(
             shape=polygonShape(vertices=[(0, 0), (1, 0), (1, -1), (0, -1)]),
@@ -532,6 +550,8 @@ class BipedalWalker(gym.Env, EzPickle):
         self.world.contactListener_bug_workaround = ContactDetector(self)
         self.world.contactListener = self.world.contactListener_bug_workaround
         self.game_over = False
+        self.bridge_collision = False
+        self.near_bridge = False
         self.prev_shaping = None
         self.scroll = 0.0
         self.lidar_render = 0
@@ -703,31 +723,61 @@ class BipedalWalker(gym.Env, EzPickle):
         # BRIDGE START
         if hasattr(self, 'bridges'):
             robot_x = self.hull.position[0]
+            robot_vx = vel.x
+            self.near_bridge = False
             
             for bridge in self.bridges:
                 # Get the x-position of this specific bridge anchor
                 bridge_x = bridge['anchor'].position[0]
+                distance_to_bridge = bridge_x - robot_x
+                
+                # Check if near a bridge
+                if 0 < distance_to_bridge < 10.0:
+                    self.near_bridge = True
                 
                 # ACTIVATION LOGIC:
                 # If robot is within 10 units of the bridge, START the timer
-                if not bridge['active'] and (bridge_x - robot_x) < 10.0:
+                if not bridge['active'] and distance_to_bridge < 10.0:
                     bridge['active'] = True
                 
                 # If active, run the timer logic
                 if bridge['active']:
                     bridge['timer'] += 1
+                    bridge_angle = abs(bridge['body'].angle)
                     
-                    if bridge['timer'] < 300: # Wait phase
+                    if bridge['timer'] < 150: # Wait phase (3 seconds at 50 FPS)
                         bridge['joint'].motorSpeed = 2.0
                         bridge['joint'].maxMotorTorque = 4000.0
+                        
+                        # WAITING REWARD: Encourage stopping near bridge
+                        if 2.0 < distance_to_bridge < 8.0:
+                            # Robot is at safe distance from bridge
+                            if abs(robot_vx) < 0.5:  # Nearly stationary
+                                # Reward for waiting patiently
+                                reward += 0.05  # +0.05 per step while waiting
+                            else:
+                                # Small penalty for moving towards bridge while it's up
+                                if robot_vx > 0:
+                                    reward -= 0.02
                     else: # Lower phase
                         bridge['body'].Awake = True
                         bridge['joint'].motorSpeed = -2.0
                         bridge['joint'].maxMotorTorque = 5000.0
                         
+                        # Reward for crossing after bridge is lowered
+                        if bridge_angle < 0.3 and distance_to_bridge < 3.0:
+                            if robot_vx > 0:  # Moving forward
+                                reward += 0.1  # Reward for crossing
+                        
                         if bridge['body'].angle <= 0.02:
                             bridge['joint'].motorSpeed = 0
                             bridge['body'].angle = 0
+        
+        # BRIDGE COLLISION PENALTY
+        if self.bridge_collision:
+            reward = -100  # Severe penalty for hitting bridge
+            terminated = True
+        
         # BRIDGE END
 
         if self.render_mode == "human":
