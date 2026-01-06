@@ -17,9 +17,9 @@ env:
   # Wrapper settings for hardcore mode
   use_hardcore_wrapper: true  # Enable frame skip, reward shaping, smoothness penalties
   frame_skip: 4  # Repeat actions for 4 frames (proven effective)
-  smoothness_coef: 0.2  # INCREASED: Stronger penalty for jerky actions
-  hull_angle_coef: 0.1  # INCREASED: Stronger penalty for tilting
-  hull_angular_vel_coef: 0.05  # INCREASED: Stronger penalty for rotation
+  smoothness_coef: 0.15  # REDUCED: Less penalty for movements (was 0.2)
+  hull_angle_coef: 0.08  # REDUCED: Less penalty for tilting (was 0.1)
+  hull_angular_vel_coef: 0.03  # REDUCED: Less penalty for rotation (was 0.05)
 
 # Agent settings
 agent:
@@ -54,7 +54,7 @@ exploration:
 
 # Experiment settings
 experiment:
-  name: "td3_hardcore_advanced_custom_walker"
+  name: "td3_hardcore_advanced_bridges"
   seed: 42
   device: "cpu"  # "cuda", "mps" (for Mac M1/M2/M3), or "cpu"
 

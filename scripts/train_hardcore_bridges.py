@@ -71,10 +71,10 @@ def make_custom_env(
             smoothness_coef=smoothness_coef,
             hull_angle_coef=hull_angle_coef,
             hull_angular_vel_coef=hull_angular_vel_coef,
-            waiting_velocity_threshold=0.1,
-            waiting_angle_threshold=0.3,
-            penalty_reduction_factor=0.2,  # Reduce penalties to 20% during wait
-            patience_bonus=0.005,
+            waiting_velocity_threshold=0.15,  # More lenient waiting detection
+            waiting_angle_threshold=0.4,  # Allow more tilt while waiting
+            penalty_reduction_factor=0.05,  # Reduce penalties to 5% (95% reduction!)
+            patience_bonus=0.03,  # 6x increase - strongly reward waiting
         )
     else:
         # Fallback to original wrapper
@@ -207,14 +207,6 @@ def train_td3(config: dict):
         use_bridge_wrapper=True,  # Enable bridge-aware wrapper
         seed=config['experiment']['seed']
     )
-        clip_normalized_obs=config['env'].get('clip_normalized_obs', 10.0),
-        clip_normalized_reward=config['env'].get('clip_normalized_reward', 10.0),
-        frame_skip=config['env'].get('frame_skip', 1),
-        smoothness_coef=config['env'].get('smoothness_coef', 0.0),
-        hull_angle_coef=config['env'].get('hull_angle_coef', 0.0),
-        hull_angular_vel_coef=config['env'].get('hull_angular_vel_coef', 0.0),
-        seed=config['experiment']['seed']
-    )
 
     # Get dimensions
     observation_dim = env.observation_space.shape[0]
@@ -222,6 +214,18 @@ def train_td3(config: dict):
 
     # Create agent
     agent = create_agent(config, observation_dim, action_dim)
+    
+    # Load checkpoint if specified (for curriculum learning)
+    if 'load_checkpoint' in config['experiment'] and config['experiment']['load_checkpoint']:
+        checkpoint_path = config['experiment']['load_checkpoint']
+        if os.path.exists(checkpoint_path):
+            print(f"\n{'='*50}")
+            print(f"Loading checkpoint from: {checkpoint_path}")
+            print(f"{'='*50}\n")
+            agent.load(checkpoint_path)
+        else:
+            print(f"\nWARNING: Checkpoint not found: {checkpoint_path}")
+            print("Starting training from scratch.\n")
 
     # Create replay buffer
     buffer = ReplayBuffer(
@@ -276,7 +280,9 @@ def train_td3(config: dict):
             episode_reward = 0
             episode_length = 0
 
-            # Update progress bar
+        # Update progress bar (less frequently for performance)
+        pbar.update(1)
+        if done or step % 1000 == 0:
             stats = logger.get_stats()
             if stats:
                 pbar.set_postfix({

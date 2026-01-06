@@ -160,13 +160,29 @@ class EliteHardcoreBridgeWrapper(gym.Wrapper):
         """
         self.step_count += 1
         
-        # Execute environment step
-        obs, reward, terminated, truncated, info = self.env.step(action)
+        # Execute environment step with frame skip
+        # Apply reward shaping at each sub-step for consistency
+        total_reward = 0.0
+        info = {}
         
-        # Apply reward shaping
-        reward = self._apply_reward_shaping(obs, action, reward, info)
+        for i in range(self.frame_skip):
+            obs, reward, terminated, truncated, step_info = self.env.step(action)
+            
+            # Apply reward shaping to each frame's reward
+            shaped_reward = self._apply_reward_shaping(obs, action, reward, step_info)
+            total_reward += shaped_reward
+            
+            # Merge info from last step
+            if i == self.frame_skip - 1 or terminated or truncated:
+                info = step_info
+            
+            if terminated or truncated:
+                break
         
-        # Check if waiting
+        # Use accumulated shaped reward
+        reward = total_reward
+        
+        # Check if waiting (based on final observation)
         is_waiting = self._is_waiting(obs)
         
         if is_waiting:
