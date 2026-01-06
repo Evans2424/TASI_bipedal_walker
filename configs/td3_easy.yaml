@@ -41,7 +41,7 @@ exploration:
 
 # Experiment settings
 experiment:
-  name: "td3_bipedal_walker"
+  name: "td3_easy"
   seed: 42
   device: "cpu"  # "cuda", "mps" (for Mac M1/M2/M3), or "cpu"
 
