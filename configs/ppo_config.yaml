@@ -24,7 +24,7 @@ agent:
 
 # Training settings
 training:
-  total_timesteps: 2000000
+  total_timesteps: 4000000
   rollout_steps: 2048  # Collect this many steps before update
   eval_frequency: 10000  # Evaluate every N steps
   eval_episodes: 10
@@ -36,7 +36,7 @@ experiment:
   name: "ppo_bipedal_walker"
   seed: 42
   device: "cuda"  # "cuda", "mps" (for Mac M1/M2/M3), or "cpu"
-  num_envs: 1  # For future parallel env support
+  num_envs: 16  # For future parallel env support
 
 # Paths
 paths:
