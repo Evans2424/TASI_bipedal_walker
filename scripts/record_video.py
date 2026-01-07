@@ -13,6 +13,13 @@ from src.agents import PPOAgent, SACAgent, TD3Agent
 from src.envs import make_env
 from src.utils import set_seed
 
+# Import for custom walker
+try:
+    from custom_walker import BipedalWalker
+    CUSTOM_WALKER_AVAILABLE = True
+except ImportError:
+    CUSTOM_WALKER_AVAILABLE = False
+
 
 def load_config(config_path: str) -> dict:
     """Load configuration from YAML file."""
@@ -122,6 +129,104 @@ def record_video(
     env.close()
 
 
+def record_video_custom(
+    checkpoint_path: str,
+    config_path: str,
+    output_dir: str,
+    num_episodes: int = 3
+):
+    """Record videos of agent performance on custom walker.
+
+    Args:
+        checkpoint_path: Path to model checkpoint
+        config_path: Path to config file
+        output_dir: Directory to save videos
+        num_episodes: Number of episodes to record
+    """
+    if not CUSTOM_WALKER_AVAILABLE:
+        print("Error: custom_walker module not found. Make sure custom_walker.py exists.")
+        return
+    
+    import os
+    
+    # Check if checkpoint exists
+    if not os.path.exists(checkpoint_path):
+        print(f"Error: Checkpoint not found at {checkpoint_path}")
+        return
+    
+    # Load config
+    config = load_config(config_path)
+    set_seed(config['experiment']['seed'])
+
+    # Create output directory
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    # Create custom walker environment with video recording
+    env = BipedalWalker(
+        hardcore=config['env']['hardcore'],
+        render_mode='rgb_array'
+    )
+    env = gym.wrappers.RecordVideo(
+        env,
+        video_folder=output_dir,
+        episode_trigger=lambda x: True,  # Record all episodes
+        name_prefix=f"custom_walker_{Path(checkpoint_path).stem}"
+    )
+    env.reset(seed=config['experiment']['seed'] + 999)
+
+    # Get dimensions
+    observation_dim = env.observation_space.shape[0]
+    action_dim = env.action_space.shape[0]
+
+    # Create and load agent (TD3 for custom walker)
+    agent_config = config['agent']
+    agent = TD3Agent(
+        observation_dim=observation_dim,
+        action_dim=action_dim,
+        hidden_dims=tuple(agent_config['hidden_dims']),
+        learning_rate=agent_config['learning_rate'],
+        gamma=agent_config['gamma'],
+        tau=agent_config['tau'],
+        target_noise=agent_config['target_noise'],
+        noise_clip=agent_config['noise_clip'],
+        policy_update_freq=agent_config['policy_update_freq'],
+        device=config['experiment']['device'],
+        seed=config['experiment']['seed']
+    )
+    agent.load(checkpoint_path)
+
+    print("\n" + "="*60)
+    print("Custom Walker Video Recording")
+    print("="*60)
+    print(f"Checkpoint: {checkpoint_path}")
+    print(f"Output directory: {output_dir}")
+    print(f"Hardcore mode: {config['env']['hardcore']}")
+    print(f"Episodes: {num_episodes}")
+    print("="*60 + "\n")
+
+    # Record episodes
+    episode_rewards = []
+
+    for episode in range(num_episodes):
+        observation, _ = env.reset()
+        episode_reward = 0
+        done = False
+
+        while not done:
+            action = agent.select_action(observation, deterministic=True)
+            observation, reward, terminated, truncated, _ = env.step(action)
+            episode_reward += reward
+            done = terminated or truncated
+
+        episode_rewards.append(episode_reward)
+        print(f"Episode {episode + 1}: Reward = {episode_reward:.2f}")
+
+    print(f"\nMean reward: {np.mean(episode_rewards):.2f} +/- {np.std(episode_rewards):.2f}")
+    print(f"Videos saved to {output_dir}\n")
+
+    env.close()
+
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Record videos of trained agent")
@@ -154,16 +259,29 @@ def main():
         action="store_true",
         help="Use hardcore mode"
     )
+    parser.add_argument(
+        "--custom",
+        action="store_true",
+        help="Use custom walker environment (for bridge training)"
+    )
 
     args = parser.parse_args()
 
-    record_video(
-        checkpoint_path=args.checkpoint,
-        config_path=args.config,
-        output_dir=args.output,
-        num_episodes=args.episodes,
-        hardcore=args.hardcore
-    )
+    if args.custom:
+        record_video_custom(
+            checkpoint_path=args.checkpoint,
+            config_path=args.config,
+            output_dir=args.output,
+            num_episodes=args.episodes
+        )
+    else:
+        record_video(
+            checkpoint_path=args.checkpoint,
+            config_path=args.config,
+            output_dir=args.output,
+            num_episodes=args.episodes,
+            hardcore=args.hardcore
+        )
 
 
 if __name__ == "__main__":
