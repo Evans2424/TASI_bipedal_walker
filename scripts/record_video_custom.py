@@ -8,9 +8,9 @@ import sys
 from pathlib import Path
 
 # Add repo to path
-sys.path.append(str(Path(__file__).parent))
+sys.path.append(str(Path(__file__).parent.parent))
 
-from custom_walker import BipedalWalker
+from src.envs.custom_walker import BipedalWalker
 from src.agents import TD3Agent
 from src.utils import set_seed
 import gymnasium as gym
