@@ -1,0 +1,120 @@
+# Bridge Refined SAC Configuration
+# IMPROVED Movement Quality & Standing Posture
+#
+# Building on WORKING balanced wrapper with targeted improvements:
+#
+# IMPROVEMENTS:
+# 1. MOVEMENT QUALITY:
+#    - Stronger upright posture penalty (hull_angle_coef: 0.05)
+#    - Periodic gait reward (alternating leg motion)
+#    - Leg symmetry bonus (opposing hip angles)
+#    - Velocity stability bonus (smooth forward motion)
+#
+# 2. BRIDGE WAITING POSTURE:
+#    - Standing upright bonus (stricter hull angle)
+#    - Legs together bonus (not spread apart)
+#    - Stable stance bonus (slight knee bend)
+#
+# REWARD MATH (still in safe range):
+# - Walking rewards: ~0.04/step (gait + symmetry + velocity)
+# - Waiting: +0.02/step × 300 = +6.0 (unchanged)
+# - Posture: ~0.07/step × 300 = +21 (but only partial)
+# - Crossing: +8.0 (unchanged)
+# - Total theoretical max: ~35, clipped to 20 (safe)
+
+env:
+  name: "CustomBipedalWalker-v3"
+  hardcore: true
+  normalize_observations: true
+  normalize_rewards: false          # Keep disabled - we control scale
+  clip_normalized_obs: 10.0
+  clip_normalized_reward: 10.0
+
+  # Use refined wrapper
+  use_bridge_refined: true
+
+  # Frame skip
+  frame_skip: 4
+
+  # === BASE PENALTIES (slightly stronger for better posture) ===
+  smoothness_coef: 0.02             # Same as balanced
+  hull_angle_coef: 0.05             # INCREASED from 0.03 (stronger upright)
+  hull_angular_vel_coef: 0.02       # INCREASED from 0.015 (less wobbling)
+
+  # === MOVEMENT QUALITY (NEW) ===
+  # Periodic gait rewards
+  gait_periodicity_bonus: 0.015     # Reward alternating leg motion
+  leg_symmetry_bonus: 0.01          # Reward symmetric leg positions
+  
+  # Velocity stability
+  velocity_stability_bonus: 0.01    # Reward consistent forward velocity
+  target_velocity: 0.5              # Target forward velocity
+  
+  # Knee bend during walking
+  knee_bend_reward: 0.015           # Slightly reduced from 0.02
+  min_bend_threshold: 0.3
+
+  # === BRIDGE WAITING POSTURE (NEW) ===
+  standing_upright_bonus: 0.03      # Reward upright hull during waiting
+  legs_together_bonus: 0.02         # Reward legs not spread apart
+  stable_stance_bonus: 0.015        # Reward slight knee bend for stability
+  
+  # Posture thresholds
+  max_hip_spread: 0.4               # Max hip angle difference for "together"
+  target_knee_angle: 0.8            # Target knee angle for stance
+  stance_hull_threshold: 0.15       # Stricter hull angle for standing
+
+  # === BRIDGE SHAPING (unchanged from balanced - WORKING) ===
+  stable_waiting_bonus: 0.02        # +0.02/step × 300 = +6.0 total
+  bridge_cross_bonus: 8.0           # +8.0 for crossing
+
+  # Anti-exploit (unchanged)
+  min_progress_for_bonuses: 15.0
+  max_waiting_steps: 400
+
+  # Detection (unchanged)
+  lidar_bridge_threshold: 0.5
+  min_close_beams: 3
+  waiting_velocity_threshold: 0.15
+  waiting_angle_threshold: 0.3
+
+  # Evaluation
+  num_eval_envs: 5
+
+# SAC hyperparameters (proven from RL Zoo3 - unchanged)
+agent:
+  type: "sac"
+  hidden_dims: [400, 300]
+  learning_rate: 7.3e-4
+  use_linear_schedule: true
+  gamma: 0.99
+  tau: 0.01
+  alpha: 0.2
+  automatic_entropy_tuning: true
+  target_entropy: -0.5
+
+buffer:
+  capacity: 2000000
+  batch_size: 256
+
+training:
+  total_timesteps: 10000000         # 10M steps
+  learning_starts: 10000
+  train_frequency: 1
+  gradient_steps: 1
+  eval_frequency: 25000
+  eval_episodes: 10
+  save_frequency: 100000
+  log_frequency: 2000
+
+experiment:
+  name: "sac_bridge_refined_gpu"
+  seed: 99
+  device: "auto"
+
+paths:
+  checkpoints: "experiments/checkpoints"
+  logs: "experiments/logs"
+
+gpu:
+  num_parallel_envs: 8

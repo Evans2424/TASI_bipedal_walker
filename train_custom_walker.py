@@ -35,7 +35,8 @@ from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback,
 from stable_baselines3.common.monitor import Monitor
 
 from elite_hardcore_wrapper import EliteHardcoreWrapper
-from elite_hardcore_bridge_wrapper import EliteHardcoreBridgeWrapper
+from bridge_optimized_wrapper import BridgeOptimizedWrapper
+from bridge_shaped_wrapper import BridgeShapedWrapper
 
 # Register custom walker environment
 register(
@@ -83,7 +84,9 @@ def make_env(
     seed: int = 0,
     hardcore: bool = True,
     use_elite_hardcore: bool = False,
-    elite_hardcore_kwargs: dict = None,
+    use_bridge_optimized: bool = False,
+    use_bridge_shaped: bool = False,
+    wrapper_kwargs: dict = None,
 ):
     """Create a single environment instance.
 
@@ -91,27 +94,51 @@ def make_env(
         rank: Unique ID for this environment
         seed: Base random seed
         hardcore: Enable hardcore mode (obstacles)
-        use_elite_hardcore: Whether to use elite hardcore wrapper
-        elite_hardcore_kwargs: Keyword arguments for elite hardcore wrapper
+        use_elite_hardcore: Whether to use elite hardcore V2 wrapper
+        use_bridge_optimized: Whether to use bridge-optimized wrapper
+        wrapper_kwargs: Keyword arguments for wrapper
     """
     def _init():
         # Use custom walker instead of standard BipedalWalker-v3
         env = gym.make("CustomBipedalWalker-v3", hardcore=hardcore)
         env.reset(seed=seed + rank)
 
-        # Apply Elite Hardcore wrapper if configured
-        # CRITICAL: Use bridge-aware wrapper for custom walker!
-        if use_elite_hardcore:
-            if elite_hardcore_kwargs is None:
-                elite_hardcore_kwargs_local = {}
+        # Apply wrapper if configured
+        if use_bridge_shaped:
+            if wrapper_kwargs is None:
+                wrapper_kwargs_local = {}
             else:
-                elite_hardcore_kwargs_local = elite_hardcore_kwargs.copy()
+                wrapper_kwargs_local = wrapper_kwargs.copy()
 
             if rank == 0:  # Only log once
-                logger.info(f"Applying EliteHardcoreBridgeWrapper (BRIDGE-AWARE) with kwargs: {elite_hardcore_kwargs_local}")
+                logger.info(f"Applying BridgeShapedWrapper with kwargs: {wrapper_kwargs_local}")
 
-            # Use bridge-aware wrapper instead of standard elite
-            env = EliteHardcoreBridgeWrapper(env, **elite_hardcore_kwargs_local)
+            # Use bridge-shaped wrapper (intelligent LIDAR-based shaping)
+            env = BridgeShapedWrapper(env, **wrapper_kwargs_local)
+
+        elif use_bridge_optimized:
+            if wrapper_kwargs is None:
+                wrapper_kwargs_local = {}
+            else:
+                wrapper_kwargs_local = wrapper_kwargs.copy()
+
+            if rank == 0:  # Only log once
+                logger.info(f"Applying BridgeOptimizedWrapper with kwargs: {wrapper_kwargs_local}")
+
+            # Use bridge-optimized wrapper (soft penalties for bridge compatibility)
+            env = BridgeOptimizedWrapper(env, **wrapper_kwargs_local)
+
+        elif use_elite_hardcore:
+            if wrapper_kwargs is None:
+                wrapper_kwargs_local = {}
+            else:
+                wrapper_kwargs_local = wrapper_kwargs.copy()
+
+            if rank == 0:  # Only log once
+                logger.info(f"Applying EliteHardcoreBridgeWrapperV2 (ANTI-EXPLOIT) with kwargs: {wrapper_kwargs_local}")
+
+            # Use bridge-aware V2 wrapper (anti-exploit version)
+            env = EliteHardcoreBridgeWrapperV2(env, **wrapper_kwargs_local)
 
         # Wrap with Monitor for logging
         env = Monitor(env)
@@ -222,20 +249,39 @@ Examples:
         num_eval_envs = env_config.get('num_eval_envs', 5)
         hardcore = env_config.get('hardcore', True)
 
-        # Elite Hardcore wrapper configuration
+        # Wrapper configuration
         use_elite_hardcore = env_config.get('use_elite_hardcore', False)
-        elite_hardcore_kwargs = {}
+        use_bridge_optimized = env_config.get('use_bridge_optimized', False)
+        use_bridge_shaped = env_config.get('use_bridge_shaped', False)
+        wrapper_kwargs = {}
 
-        if use_elite_hardcore:
-            elite_hardcore_kwargs = {
+        if use_bridge_shaped:
+            # Bridge-shaped wrapper parameters (LIDAR-based)
+            wrapper_kwargs = {
                 'frame_skip': env_config.get('frame_skip', 4),
-                'smoothness_coef': env_config.get('smoothness_coef', 0.2),
-                'hull_angle_coef': env_config.get('hull_angle_coef', 0.1),
-                'hull_angular_vel_coef': env_config.get('hull_angular_vel_coef', 0.05),
-                'knee_bend_reward': env_config.get('knee_bend_reward', 0.02),
+                'smoothness_coef': env_config.get('smoothness_coef', 0.03),
+                'hull_angle_coef': env_config.get('hull_angle_coef', 0.04),
+                'hull_angular_vel_coef': env_config.get('hull_angular_vel_coef', 0.02),
+                'knee_bend_reward': env_config.get('knee_bend_reward', 0.015),
                 'min_bend_threshold': env_config.get('min_bend_threshold', 0.3),
-                'max_joint_velocity': env_config.get('max_joint_velocity', 2.0),
-                'velocity_penalty': env_config.get('velocity_penalty', 0.02),
+                'lidar_bridge_threshold': env_config.get('lidar_bridge_threshold', 0.8),
+                'bridge_approach_distance': env_config.get('bridge_approach_distance', 5.0),
+                'cautious_approach_bonus': env_config.get('cautious_approach_bonus', 0.02),
+                'stable_waiting_bonus': env_config.get('stable_waiting_bonus', 0.03),
+                'bridge_cross_bonus': env_config.get('bridge_cross_bonus', 2.0),
+                'waiting_velocity_threshold': env_config.get('waiting_velocity_threshold', 0.15),
+                'waiting_angle_threshold': env_config.get('waiting_angle_threshold', 0.3),
+            }
+        elif use_bridge_optimized or use_elite_hardcore:
+            wrapper_kwargs = {
+                'frame_skip': env_config.get('frame_skip', 4),
+                'smoothness_coef': env_config.get('smoothness_coef', 0.05),
+                'hull_angle_coef': env_config.get('hull_angle_coef', 0.05),
+                'hull_angular_vel_coef': env_config.get('hull_angular_vel_coef', 0.02),
+                'knee_bend_reward': env_config.get('knee_bend_reward', 0.01),
+                'min_bend_threshold': env_config.get('min_bend_threshold', 0.3),
+                'max_joint_velocity': env_config.get('max_joint_velocity', 3.0),
+                'velocity_penalty': env_config.get('velocity_penalty', 0.01),
                 'early_steps_stability_bonus': env_config.get('early_steps_stability_bonus', 0.01),
                 'early_steps_count': env_config.get('early_steps_count', 100),
             }
@@ -253,20 +299,53 @@ Examples:
             logger.info("HARDCORE MODE ENABLED - Training with obstacles!")
             logger.info("Obstacles: GRASS, STUMP, STAIRS, PIT, **BRIDGE** (dynamic drawbridges)")
 
-        if use_elite_hardcore:
-            logger.info("*** USING ELITE HARDCORE BRIDGE WRAPPER (BRIDGE-AWARE!) ***")
+        if use_bridge_shaped:
+            logger.info("*** USING BRIDGE-SHAPED WRAPPER (INTELLIGENT LIDAR SHAPING) ***")
+            logger.info(f"  BASE PENALTIES (Very Soft):")
+            logger.info(f"    Smoothness: {wrapper_kwargs['smoothness_coef']} (very soft)")
+            logger.info(f"    Hull Stability: angle={wrapper_kwargs['hull_angle_coef']}, vel={wrapper_kwargs['hull_angular_vel_coef']}")
+            logger.info(f"  MOVEMENT QUALITY:")
+            logger.info(f"    Knee Bending: {wrapper_kwargs['knee_bend_reward']}")
+            logger.info(f"  BRIDGE SHAPING (INTELLIGENT):")
+            logger.info(f"    Bridge Detection: LIDAR threshold={wrapper_kwargs['lidar_bridge_threshold']}")
+            logger.info(f"    Cautious Approach: +{wrapper_kwargs['cautious_approach_bonus']} reward for slowing")
+            logger.info(f"    Stable Waiting: +{wrapper_kwargs['stable_waiting_bonus']} reward per step")
+            logger.info(f"    Crossing Bonus: +{wrapper_kwargs['bridge_cross_bonus']} reward for success")
+            logger.info(f"  KEY INNOVATION:")
+            logger.info(f"    - Detects bridges in LIDAR")
+            logger.info(f"    - Immediate reward for correct behavior (not delayed)")
+            logger.info(f"    - Solves credit assignment problem")
+
+        elif use_bridge_optimized:
+            logger.info("*** USING BRIDGE-OPTIMIZED WRAPPER (SOFT PENALTIES) ***")
+            logger.info(f"  CORE FEATURES (SOFT - Bridge Compatible):")
+            logger.info(f"    Frame Skip: {wrapper_kwargs['frame_skip']}")
+            logger.info(f"    L2 Smoothness: {wrapper_kwargs['smoothness_coef']} (REDUCED 4x from Elite)")
+            logger.info(f"    Hull Stability: angle={wrapper_kwargs['hull_angle_coef']}, vel={wrapper_kwargs['hull_angular_vel_coef']} (REDUCED 2x from Elite)")
+            logger.info(f"  MOVEMENT QUALITY (Weak Positive Shaping):")
+            logger.info(f"    Knee Bending: {wrapper_kwargs['knee_bend_reward']}")
+            logger.info(f"    Velocity Limits: max={wrapper_kwargs['max_joint_velocity']}, penalty={wrapper_kwargs['velocity_penalty']}")
+            logger.info(f"    Early Stability: bonus={wrapper_kwargs['early_steps_stability_bonus']} for {wrapper_kwargs['early_steps_count']} steps")
+            logger.info(f"  PHILOSOPHY:")
+            logger.info(f"    - Softer penalties make 300-step bridge waits viable (~15 cost vs ~60)")
+            logger.info(f"    - Forward progress drives learning, not penalties")
+            logger.info(f"    - Agent learns naturally when waiting is beneficial")
+
+        elif use_elite_hardcore:
+            logger.info("*** USING ELITE HARDCORE BRIDGE WRAPPER V2 (ANTI-EXPLOIT!) ***")
             logger.info(f"  CORE FEATURES (STRONG):")
-            logger.info(f"    Frame Skip: {elite_hardcore_kwargs['frame_skip']}")
-            logger.info(f"    L2 Smoothness: {elite_hardcore_kwargs['smoothness_coef']}")
-            logger.info(f"    Hull Stability: angle={elite_hardcore_kwargs['hull_angle_coef']}, vel={elite_hardcore_kwargs['hull_angular_vel_coef']}")
+            logger.info(f"    Frame Skip: {wrapper_kwargs['frame_skip']}")
+            logger.info(f"    L2 Smoothness: {wrapper_kwargs['smoothness_coef']}")
+            logger.info(f"    Hull Stability: angle={wrapper_kwargs['hull_angle_coef']}, vel={wrapper_kwargs['hull_angular_vel_coef']}")
             logger.info(f"  AUGMENTATIONS (WEAK):")
-            logger.info(f"    Knee Bending: {elite_hardcore_kwargs['knee_bend_reward']}")
-            logger.info(f"    Velocity Limits: max={elite_hardcore_kwargs['max_joint_velocity']}, penalty={elite_hardcore_kwargs['velocity_penalty']}")
-            logger.info(f"    Early Stability: bonus={elite_hardcore_kwargs['early_steps_stability_bonus']} for {elite_hardcore_kwargs['early_steps_count']} steps")
-            logger.info(f"  BRIDGE HANDLING (CRITICAL FIX):")
-            logger.info(f"    Waiting Detection: velocity < 0.1, angle < 0.3")
-            logger.info(f"    Penalty Reduction: 80% (only 20% of penalties during wait)")
-            logger.info(f"    Patience Bonus: +0.005 per step for stable waiting")
+            logger.info(f"    Knee Bending: {wrapper_kwargs['knee_bend_reward']}")
+            logger.info(f"    Velocity Limits: max={wrapper_kwargs['max_joint_velocity']}, penalty={wrapper_kwargs['velocity_penalty']}")
+            logger.info(f"    Early Stability: bonus={wrapper_kwargs['early_steps_stability_bonus']} for {wrapper_kwargs['early_steps_count']} steps")
+            logger.info(f"  BRIDGE HANDLING V2 (ANTI-EXPLOIT):")
+            logger.info(f"    Waiting Detection: velocity < 0.05, angle < 0.2 (STRICTER)")
+            logger.info(f"    Forward Progress Req: Must reach x=10 before waiting applies")
+            logger.info(f"    Consecutive Frames: Must be stable for 8 frames (2 seconds)")
+            logger.info(f"    Penalty Reduction: 80% (only during legitimate bridge waits)")
 
         logger.info(f"Parallel Envs: {num_envs}")
         logger.info(f"Eval Envs: {num_eval_envs}")
@@ -290,7 +369,9 @@ Examples:
                 seed=seed,
                 hardcore=hardcore,
                 use_elite_hardcore=use_elite_hardcore,
-                elite_hardcore_kwargs=elite_hardcore_kwargs,
+                use_bridge_optimized=use_bridge_optimized,
+                use_bridge_shaped=use_bridge_shaped,
+                wrapper_kwargs=wrapper_kwargs,
             )
             for i in range(num_envs)
         ])
@@ -318,7 +399,9 @@ Examples:
                 seed=seed + 10000,  # Different seed for eval
                 hardcore=hardcore,
                 use_elite_hardcore=use_elite_hardcore,
-                elite_hardcore_kwargs=elite_hardcore_kwargs,
+                use_bridge_optimized=use_bridge_optimized,
+                use_bridge_shaped=use_bridge_shaped,
+                wrapper_kwargs=wrapper_kwargs,
             )
             for i in range(num_eval_envs)
         ])

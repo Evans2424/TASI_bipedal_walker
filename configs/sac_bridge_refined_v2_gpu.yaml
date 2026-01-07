@@ -1,0 +1,94 @@
+# Bridge Refined V2 SAC Configuration
+# MINIMAL changes to working balanced wrapper
+#
+# LESSON LEARNED FROM V1:
+# - Adding 6+ new bonus components broke learning
+# - Balanced wrapper was WORKING - don't break it
+#
+# CHANGES FROM BALANCED (only 3 small tweaks):
+# 1. hull_angle_coef: 0.03 → 0.04 (slightly more upright)
+# 2. hull_angular_vel_coef: 0.015 → 0.02 (less wobbling)
+# 3. max_hip_spread_for_waiting: 0.6 (legs can't spread during wait)
+#
+# EVERYTHING ELSE IS IDENTICAL TO BALANCED
+
+env:
+  name: "CustomBipedalWalker-v3"
+  hardcore: true
+  normalize_observations: true
+  normalize_rewards: false          # SAME - we control scale
+  clip_normalized_obs: 10.0
+  clip_normalized_reward: 10.0
+
+  # Use refined v2 wrapper
+  use_bridge_refined_v2: true
+
+  # Frame skip - SAME
+  frame_skip: 4
+
+  # BASE PENALTIES (slightly stronger)
+  smoothness_coef: 0.02             # SAME as balanced
+  hull_angle_coef: 0.04             # SLIGHTLY increased from 0.03
+  hull_angular_vel_coef: 0.02       # SLIGHTLY increased from 0.015
+
+  # Movement quality - SAME as balanced
+  knee_bend_reward: 0.02
+  min_bend_threshold: 0.3
+
+  # Bridge shaping - SAME as balanced
+  stable_waiting_bonus: 0.02
+  bridge_cross_bonus: 8.0
+
+  # Anti-exploit - SAME as balanced
+  min_progress_for_bonuses: 15.0
+  max_waiting_steps: 400
+
+  # Detection - SAME as balanced
+  lidar_bridge_threshold: 0.5
+  min_close_beams: 3
+  waiting_velocity_threshold: 0.15
+  waiting_angle_threshold: 0.3
+
+  # NEW: Stricter waiting posture (only new parameter)
+  max_hip_spread_for_waiting: 0.6   # Legs can't be too spread during waiting
+
+  # Evaluation
+  num_eval_envs: 5
+
+# SAC hyperparameters - SAME as balanced (proven working)
+agent:
+  type: "sac"
+  hidden_dims: [400, 300]
+  learning_rate: 7.3e-4
+  use_linear_schedule: true
+  gamma: 0.99
+  tau: 0.01
+  alpha: 0.2
+  automatic_entropy_tuning: true
+  target_entropy: -0.5
+
+buffer:
+  capacity: 2000000
+  batch_size: 256
+
+training:
+  total_timesteps: 10000000
+  learning_starts: 10000
+  train_frequency: 1
+  gradient_steps: 1
+  eval_frequency: 25000
+  eval_episodes: 10
+  save_frequency: 100000
+  log_frequency: 2000
+
+experiment:
+  name: "sac_bridge_refined_v2_gpu"
+  seed: 99
+  device: "auto"
+
+paths:
+  checkpoints: "experiments/checkpoints"
+  logs: "experiments/logs"
+
+gpu:
+  num_parallel_envs: 8
