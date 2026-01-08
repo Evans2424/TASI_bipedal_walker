@@ -42,6 +42,9 @@ ENV/
 *.pth
 *replay_buffer*.pkl
 experiments/logs/
+experiments/videos/
+*.mp4
+videos/
 
 # Data
 data/

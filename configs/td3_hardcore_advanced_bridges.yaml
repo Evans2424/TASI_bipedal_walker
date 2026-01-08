@@ -11,11 +11,12 @@ env:
   clip_actions: true
   num_eval_envs: 5  # Number of environments for evaluation
   normalize_observations: true  # Critical for hardcore mode
-  normalize_rewards: true  # Critical for hardcore mode
+  normalize_rewards: false  # Disabled - BridgeBalancedWrapper already clips rewards appropriately
   clip_normalized_obs: 10.0
   clip_normalized_reward: 10.0
   # Wrapper settings for hardcore mode
-  use_hardcore_wrapper: true  # Enable frame skip, reward shaping, smoothness penalties
+  use_bridge_wrapper: true  # Use BridgeBalancedWrapper for bridge-specific reward shaping
+  use_hardcore_wrapper: false  # Disabled when using bridge wrapper
   frame_skip: 4  # Repeat actions for 4 frames (proven effective)
   smoothness_coef: 0.15  # REDUCED: Less penalty for movements (was 0.2)
   hull_angle_coef: 0.08  # REDUCED: Less penalty for tilting (was 0.1)
