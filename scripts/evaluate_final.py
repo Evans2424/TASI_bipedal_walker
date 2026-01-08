@@ -17,7 +17,7 @@ from src.utils import set_seed
 
 # Import for custom walker
 try:
-    from custom_walker import BipedalWalker
+    from src.envs.custom_walker import BipedalWalker
     CUSTOM_WALKER_AVAILABLE = True
 except ImportError:
     CUSTOM_WALKER_AVAILABLE = False
