@@ -4,6 +4,8 @@ import argparse
 import yaml
 import numpy as np
 import torch
+import csv
+import matplotlib.pyplot as plt
 from pathlib import Path
 
 import sys
@@ -58,7 +60,8 @@ def evaluate(
     config_path: str,
     num_episodes: int = 10,
     render: bool = False,
-    hardcore: bool = False
+    hardcore: bool = False,
+    output_name: str = None
 ):
     """Evaluate a trained agent.
 
@@ -121,15 +124,69 @@ def evaluate(
 
         print(f"Episode {episode + 1}: Reward = {episode_reward:.2f}, Length = {episode_length}")
 
+    # Calculate statistics
+    episode_rewards = np.array(episode_rewards)
+    episode_lengths = np.array(episode_lengths)
+    success_rate = np.sum(episode_rewards > 300) / num_episodes * 100
+    
     # Print statistics
     print("\n" + "="*50)
     print("Evaluation Results")
     print("="*50)
+    print(f"Success rate (>300): {success_rate:.1f}%")
     print(f"Mean reward: {np.mean(episode_rewards):.2f} +/- {np.std(episode_rewards):.2f}")
+    print(f"Median reward: {np.median(episode_rewards):.2f}")
     print(f"Min reward: {np.min(episode_rewards):.2f}")
     print(f"Max reward: {np.max(episode_rewards):.2f}")
     print(f"Mean length: {np.mean(episode_lengths):.2f}")
     print("="*50)
+
+    # Save results to CSV if output_name provided
+    if output_name:
+        csv_path = f"{output_name}.csv"
+        with open(csv_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Metric', 'Value'])
+            writer.writerow(['Success Rate (%)', f"{success_rate:.2f}"])
+            writer.writerow(['Mean Reward', f"{np.mean(episode_rewards):.2f}"])
+            writer.writerow(['Median Reward', f"{np.median(episode_rewards):.2f}"])
+            writer.writerow(['Std Reward', f"{np.std(episode_rewards):.2f}"])
+            writer.writerow(['Min Reward', f"{np.min(episode_rewards):.2f}"])
+            writer.writerow(['Max Reward', f"{np.max(episode_rewards):.2f}"])
+            writer.writerow(['Mean Length', f"{np.mean(episode_lengths):.2f}"])
+            writer.writerow([])
+            writer.writerow(['Episode', 'Reward', 'Length'])
+            for i, (r, l) in enumerate(zip(episode_rewards, episode_lengths)):
+                writer.writerow([i+1, f"{r:.2f}", l])
+        print(f"\nResults saved to {csv_path}")
+        
+        # Plot distributions
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+        
+        # Reward distribution
+        axes[0].hist(episode_rewards, bins=10, edgecolor='black', alpha=0.7)
+        axes[0].axvline(np.mean(episode_rewards), color='red', linestyle='--', linewidth=2, label=f'Mean: {np.mean(episode_rewards):.1f}')
+        axes[0].axvline(300, color='green', linestyle='--', linewidth=2, label='Success: 300')
+        axes[0].set_xlabel('Reward', fontsize=12)
+        axes[0].set_ylabel('Frequency', fontsize=12)
+        axes[0].set_title('Reward Distribution', fontsize=14, fontweight='bold')
+        axes[0].legend()
+        axes[0].grid(True, alpha=0.3)
+        
+        # Length distribution
+        axes[1].hist(episode_lengths, bins=10, edgecolor='black', alpha=0.7, color='orange')
+        axes[1].axvline(np.mean(episode_lengths), color='red', linestyle='--', linewidth=2, label=f'Mean: {np.mean(episode_lengths):.1f}')
+        axes[1].set_xlabel('Episode Length', fontsize=12)
+        axes[1].set_ylabel('Frequency', fontsize=12)
+        axes[1].set_title('Episode Length Distribution', fontsize=14, fontweight='bold')
+        axes[1].legend()
+        axes[1].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plot_path = f"{output_name}_distribution.png"
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        print(f"Distribution plot saved to {plot_path}")
+        plt.close()
 
     env.close()
 
@@ -137,7 +194,8 @@ def evaluate(
 def evaluate_custom(
     checkpoint_path: str,
     config_path: str,
-    num_episodes: int = 10
+    num_episodes: int = 10,
+    output_name: str = None
 ):
     """Evaluate a trained agent on custom walker environment.
 
@@ -220,16 +278,69 @@ def evaluate_custom(
 
         print(f"Episode {episode + 1:2d}: Reward = {episode_reward:7.2f}, Length = {episode_length:4d}")
 
+    # Calculate statistics
+    episode_rewards = np.array(episode_rewards)
+    episode_lengths = np.array(episode_lengths)
+    success_rate = np.sum(episode_rewards > 300) / num_episodes * 100
+    
     # Print statistics
     print("\n" + "="*60)
     print("Evaluation Results")
     print("="*60)
+    print(f"Success rate (>300): {success_rate:.1f}%")
     print(f"Mean reward:     {np.mean(episode_rewards):7.2f} +/- {np.std(episode_rewards):.2f}")
     print(f"Median reward:   {np.median(episode_rewards):7.2f}")
     print(f"Min reward:      {np.min(episode_rewards):7.2f}")
     print(f"Max reward:      {np.max(episode_rewards):7.2f}")
     print(f"Mean episode length: {np.mean(episode_lengths):.1f}")
     print("="*60 + "\n")
+
+    # Save results to CSV if output_name provided
+    if output_name:
+        csv_path = f"{output_name}.csv"
+        with open(csv_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Metric', 'Value'])
+            writer.writerow(['Success Rate (%)', f"{success_rate:.2f}"])
+            writer.writerow(['Mean Reward', f"{np.mean(episode_rewards):.2f}"])
+            writer.writerow(['Median Reward', f"{np.median(episode_rewards):.2f}"])
+            writer.writerow(['Std Reward', f"{np.std(episode_rewards):.2f}"])
+            writer.writerow(['Min Reward', f"{np.min(episode_rewards):.2f}"])
+            writer.writerow(['Max Reward', f"{np.max(episode_rewards):.2f}"])
+            writer.writerow(['Mean Length', f"{np.mean(episode_lengths):.2f}"])
+            writer.writerow([])
+            writer.writerow(['Episode', 'Reward', 'Length'])
+            for i, (r, l) in enumerate(zip(episode_rewards, episode_lengths)):
+                writer.writerow([i+1, f"{r:.2f}", l])
+        print(f"Results saved to {csv_path}")
+        
+        # Plot distributions
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+        
+        # Reward distribution
+        axes[0].hist(episode_rewards, bins=10, edgecolor='black', alpha=0.7)
+        axes[0].axvline(np.mean(episode_rewards), color='red', linestyle='--', linewidth=2, label=f'Mean: {np.mean(episode_rewards):.1f}')
+        axes[0].axvline(300, color='green', linestyle='--', linewidth=2, label='Success: 300')
+        axes[0].set_xlabel('Reward', fontsize=12)
+        axes[0].set_ylabel('Frequency', fontsize=12)
+        axes[0].set_title('Reward Distribution', fontsize=14, fontweight='bold')
+        axes[0].legend()
+        axes[0].grid(True, alpha=0.3)
+        
+        # Length distribution
+        axes[1].hist(episode_lengths, bins=10, edgecolor='black', alpha=0.7, color='orange')
+        axes[1].axvline(np.mean(episode_lengths), color='red', linestyle='--', linewidth=2, label=f'Mean: {np.mean(episode_lengths):.1f}')
+        axes[1].set_xlabel('Episode Length', fontsize=12)
+        axes[1].set_ylabel('Frequency', fontsize=12)
+        axes[1].set_title('Episode Length Distribution', fontsize=14, fontweight='bold')
+        axes[1].legend()
+        axes[1].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plot_path = f"{output_name}_distribution.png"
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        print(f"Distribution plot saved to {plot_path}")
+        plt.close()
 
     env.close()
 
@@ -270,6 +381,12 @@ def main():
         action="store_true",
         help="Use custom walker environment (for bridge training)"
     )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="Output name for CSV and plots (e.g., 'td3_evaluation')"
+    )
 
     args = parser.parse_args()
 
@@ -277,7 +394,8 @@ def main():
         evaluate_custom(
             checkpoint_path=args.checkpoint,
             config_path=args.config,
-            num_episodes=args.episodes
+            num_episodes=args.episodes,
+            output_name=args.output
         )
     else:
         evaluate(
@@ -285,7 +403,8 @@ def main():
             config_path=args.config,
             num_episodes=args.episodes,
             render=args.render,
-            hardcore=args.hardcore
+            hardcore=args.hardcore,
+            output_name=args.output
         )
 
 
