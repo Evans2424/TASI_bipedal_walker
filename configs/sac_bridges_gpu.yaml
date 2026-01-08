@@ -1,0 +1,91 @@
+# SAC Configuration - Bridges Mode (Custom Obstacles)
+# Custom BipedalWalker with bridge obstacles requiring strategic navigation
+
+env:
+  name: "CustomBipedalWalker-v3"
+  hardcore: true
+  normalize_observations: true
+  normalize_rewards: false  # We control reward scale in wrapper
+  clip_normalized_obs: 10.0
+  clip_normalized_reward: 10.0
+  
+  # Use custom wrapper for bridges
+  use_bridge_wrapper: true
+  
+  # Frame skip
+  frame_skip: 4
+  
+  # Base penalties (soft but consistent)
+  smoothness_coef: 0.02
+  hull_angle_coef: 0.03
+  hull_angular_vel_coef: 0.015
+  
+  # Movement quality
+  knee_bend_reward: 0.02
+  min_bend_threshold: 0.3
+  
+  # Bridge shaping (moderate bonuses)
+  stable_waiting_bonus: 0.02    # +0.02/step (~6.0 total)
+  bridge_cross_bonus: 8.0       # +8.0 for crossing
+  
+  # Anti-exploit
+  min_progress_for_bonuses: 15.0
+  max_waiting_steps: 400
+  
+  # Detection (strict to avoid false positives)
+  lidar_bridge_threshold: 0.5
+  min_close_beams: 3
+  waiting_velocity_threshold: 0.15
+  waiting_angle_threshold: 0.3
+
+# SAC Algorithm parameters (RL Zoo3 tuned for BipedalWalker)
+algorithm:
+  learning_rate: 7.3e-4           # RL Zoo3 tuned value
+  buffer_size: 2000000
+  learning_starts: 10000
+  batch_size: 256
+  tau: 0.01                        # RL Zoo3 uses 0.01 (not 0.005)
+  gamma: 0.99
+  train_freq: 1
+  gradient_steps: 1
+  
+  # Policy network (RL Zoo3 architecture)
+  net_arch: [400, 300]             # RL Zoo3 tuned architecture
+  
+  # Entropy tuning
+  ent_coef: "auto"                 # Auto-tune entropy coefficient
+  target_entropy: "auto"           # Let SB3 calculate optimal value
+  use_sde: false                   # Don't use state-dependent exploration
+
+# Training settings
+training:
+  total_timesteps: 10000000
+  n_envs: 8
+  eval_freq: 25000
+  eval_episodes: 10
+  save_freq: 100000
+  log_interval: 10
+  
+  # Early stopping (recommended for long runs)
+  early_stopping:
+    use_reward_threshold: false
+    reward_threshold: 300.0
+    use_no_improvement_stop: true   # Recommended
+    patience: 15                    # ~375K steps without improvement
+    min_evals: 40                   # Wait ~1M steps before early stopping
+  
+  # Evaluation
+  eval_log_path: "experiments/logs/sac_bridges"
+  tensorboard_log: "experiments/logs/sac_bridges"
+
+# Checkpoint settings
+checkpoint:
+  save_path: "experiments/checkpoints/sac_bridges"
+  save_replay_buffer: false
+  
+# Experiment settings
+experiment:
+  name: "sac_bridges"
+  seed: 42
+  device: "mps"
+  verbose: 1

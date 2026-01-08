@@ -1,0 +1,84 @@
+# Bridge-Shaped SAC Configuration
+# Intelligent reward shaping for bridges + natural movement
+#
+# KEY INNOVATION:
+# - Detects bridges in LIDAR readings
+# - Immediate positive reward for correct bridge behavior
+# - Solves delayed reward problem with dense shaping
+# - Maintains movement quality throughout
+
+env:
+  name: "CustomBipedalWalker-v3"
+  hardcore: true
+  normalize_observations: true
+  normalize_rewards: true
+  clip_normalized_obs: 10.0
+  clip_normalized_reward: 10.0
+
+  # Bridge-shaped wrapper (intelligent shaping)
+  use_bridge_shaped: true
+
+  # Frame skip
+  frame_skip: 4
+
+  # VERY SOFT base penalties (allow waiting)
+  smoothness_coef: 0.03           # Very soft
+  hull_angle_coef: 0.04           # Very soft
+  hull_angular_vel_coef: 0.02     # Very soft
+
+  # Movement quality (natural gait)
+  knee_bend_reward: 0.015
+  min_bend_threshold: 0.3
+
+  # Bridge detection (STRICTER)
+  lidar_bridge_threshold: 0.5     # STRICTER (was 0.8)
+
+  # Bridge shaping rewards (ANTI-EXPLOIT FIXED)
+  stable_waiting_bonus: 0.01      # REDUCED from 0.03 (was exploited)
+  bridge_cross_bonus: 5.0         # INCREASED from 2.0 (encourage crossing)
+
+  # Anti-exploit measures
+  min_progress_for_bonuses: 15.0  # Must reach x=15 before bonuses
+  max_waiting_steps: 400          # Stop bonuses after 400 steps
+
+  # Waiting criteria
+  waiting_velocity_threshold: 0.15
+  waiting_angle_threshold: 0.3
+
+# Same proven SAC hyperparameters
+agent:
+  type: "sac"
+  hidden_dims: [400, 300]
+  learning_rate: 7.3e-4
+  use_linear_schedule: true
+  gamma: 0.99
+  tau: 0.01
+  alpha: 0.2
+  automatic_entropy_tuning: true
+  target_entropy: -0.5
+
+buffer:
+  capacity: 2000000
+  batch_size: 256
+
+training:
+  total_timesteps: 15000000       # 15M steps (bridges are hard)
+  learning_starts: 10000
+  train_frequency: 1
+  gradient_steps: 1
+  eval_frequency: 25000
+  eval_episodes: 10
+  save_frequency: 100000
+  log_frequency: 2000
+
+experiment:
+  name: "sac_bridge_shaped_gpu"
+  seed: 99
+  device: "auto"
+
+paths:
+  checkpoints: "experiments/checkpoints"
+  logs: "experiments/logs"
+
+gpu:
+  num_parallel_envs: 8

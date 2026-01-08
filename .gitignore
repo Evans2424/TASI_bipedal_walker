@@ -40,6 +40,8 @@ ENV/
 # Experiments
 *.pt
 *.pth
+*replay_buffer*.pkl
+experiments/logs/
 
 # Data
 data/
@@ -55,3 +57,5 @@ htmlcov/
 
 experiments/checkpoints/sac_elite_unified_hardcore_gpu_custom_bridges
 experiments/checkpoints/sac_elite_unified_hardcore_gpu_custom_bridges_OLD_no_bridge_fix
+
+bipedal_venv
