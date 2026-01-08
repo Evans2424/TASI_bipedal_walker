@@ -80,11 +80,19 @@ training:
   eval_episodes: 10
   save_frequency: 100000
   log_frequency: 2000
+  
+  # Early stopping (scientifically-backed stopping criteria)
+  early_stopping:
+    use_reward_threshold: false    # Stop when reward threshold is reached
+    reward_threshold: 300.0         # BipedalWalker success threshold
+    use_no_improvement_stop: true   # RECOMMENDED: Stop if no improvement
+    patience: 15                    # Stop after 15 evals (~375K steps) without improvement
+    min_evals: 40                   # Wait for 40 evals (~1M steps) before allowing early stop
 
 experiment:
   name: "sac_bridge_balanced_gpu"
   seed: 99
-  device: "mps"
+  device: "auto"
 
 paths:
   checkpoints: "experiments/checkpoints"

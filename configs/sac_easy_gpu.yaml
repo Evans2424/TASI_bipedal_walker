@@ -1,0 +1,69 @@
+# SAC Configuration - Easy Mode (Non-Hardcore)
+# Standard BipedalWalker-v3 environment without obstacles
+
+env:
+  name: "BipedalWalker-v3"
+  hardcore: false
+  normalize_observations: true
+  normalize_rewards: true  # Enable reward normalization for stable training
+  clip_normalized_obs: 10.0
+  clip_normalized_reward: 10.0
+  
+  # No custom wrapper for easy mode
+  use_bridge_wrapper: false
+  use_hardcore_wrapper: false
+  
+  # Frame skip
+  frame_skip: 1  # No frame skip for easy mode
+
+# SAC Algorithm parameters (RL Zoo3 tuned for BipedalWalker)
+algorithm:
+  learning_rate: 7.3e-4           # RL Zoo3 tuned value
+  buffer_size: 300000
+  learning_starts: 10000
+  batch_size: 256
+  tau: 0.01                        # RL Zoo3 uses 0.01 (not 0.005)
+  gamma: 0.99
+  train_freq: 1
+  gradient_steps: 1
+  
+  # Policy network (RL Zoo3 architecture)
+  net_arch: [400, 300]             # RL Zoo3 tuned architecture
+  
+  # Entropy tuning
+  ent_coef: "auto"                 # Auto-tune entropy coefficient
+  target_entropy: "auto"           # Let SB3 calculate optimal value
+  use_sde: false                   # Don't use state-dependent exploration
+
+# Training settings
+training:
+  total_timesteps: 3000000
+  n_envs: 8
+  eval_freq: 10000
+  eval_episodes: 10
+  save_freq: 50000
+  log_interval: 10
+  
+  # Early stopping (optional - set use_*_stop: true to enable)
+  early_stopping:
+    use_reward_threshold: false    # Stop when reward threshold is reached
+    reward_threshold: 300.0         # Target reward to stop training
+    use_no_improvement_stop: false  # Stop when no improvement detected
+    patience: 10                    # Number of evals without improvement before stopping
+    min_evals: 20                   # Minimum evaluations before early stopping can trigger
+  
+  # Evaluation
+  eval_log_path: "experiments/logs/sac_easy"
+  tensorboard_log: "experiments/logs/sac_easy"
+
+# Checkpoint settings
+checkpoint:
+  save_path: "experiments/checkpoints/sac_easy"
+  save_replay_buffer: false  # Don't save large replay buffer files
+  
+# Experiment settings
+experiment:
+  name: "sac_easy"
+  seed: 42
+  device: "mps"  # Use "cpu" if no GPU available
+  verbose: 1
