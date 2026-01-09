@@ -14,7 +14,7 @@ import argparse
 import os
 import numpy as np
 
-from elite_hardcore_wrapper import EliteHardcoreWrapper
+from wrappers.elite_hardcore_wrapper import EliteHardcoreWrapper
 
 
 def make_env(render_mode="human", record_video=False, hardcore=True):

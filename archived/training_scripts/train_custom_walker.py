@@ -34,7 +34,7 @@ from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize, VecMon
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, CallbackList
 from stable_baselines3.common.monitor import Monitor
 
-from elite_hardcore_wrapper import EliteHardcoreWrapper
+from wrappers.elite_hardcore_wrapper import EliteHardcoreWrapper
 from bridge_optimized_wrapper import BridgeOptimizedWrapper
 from bridge_shaped_wrapper import BridgeShapedWrapper
 

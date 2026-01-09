@@ -27,7 +27,8 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize, VecMonitor, DummyVecEnv
 from stable_baselines3.common.callbacks import (
     EvalCallback, CheckpointCallback, CallbackList,
-    StopTrainingOnRewardThreshold, StopTrainingOnNoModelImprovement
+    StopTrainingOnRewardThreshold, StopTrainingOnNoModelImprovement,
+    ProgressBarCallback
 )
 from stable_baselines3.common.monitor import Monitor
 
@@ -35,7 +36,6 @@ from stable_baselines3.common.monitor import Monitor
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from wrappers.bridge_balanced_wrapper import BridgeBalancedWrapper
-from wrappers.hardcore_wrappers import HardcoreWrapper
 
 # Register custom walker environment for bridges mode
 register(
@@ -67,7 +67,6 @@ def make_env(rank: int, seed: int, config: dict):
         env_config = config['env']
         hardcore = env_config.get('hardcore', False)
         use_bridge_wrapper = env_config.get('use_bridge_wrapper', False)
-        use_hardcore_wrapper = env_config.get('use_hardcore_wrapper', False)
         env_name = env_config.get('name', 'BipedalWalker-v3')
         
         # Create environment
@@ -99,17 +98,6 @@ def make_env(rank: int, seed: int, config: dict):
                 'waiting_angle_threshold': env_config.get('waiting_angle_threshold', 0.3),
             }
             env = BridgeBalancedWrapper(env, **wrapper_kwargs)
-        elif use_hardcore_wrapper:
-            # Apply unified hardcore wrapper (includes frame skip, smoothness, stability, reward clipping)
-            wrapper_kwargs = {
-                'frame_skip': env_config.get('frame_skip', 4),
-                'smoothness_coef': env_config.get('smoothness_coef', 0.2),
-                'angle_coef': env_config.get('hull_angle_coef', 0.1),
-                'angular_vel_coef': env_config.get('hull_angular_vel_coef', 0.05),
-                'reward_clip_min': -10.0,
-                'reward_clip_max': 10.0,
-            }
-            env = HardcoreWrapper(env, **wrapper_kwargs)
         
         env = Monitor(env)
         return env
@@ -331,6 +319,10 @@ def main():
         )
         callbacks.append(checkpoint_callback)
         
+        # Progress bar callback
+        progress_callback = ProgressBarCallback()
+        callbacks.append(progress_callback)
+        
         callback = CallbackList(callbacks)
         logger.info("✓ Callbacks configured")
 
@@ -344,7 +336,6 @@ def main():
             callback=callback,
             log_interval=training_config.get('log_interval', 10),
             tb_log_name=experiment_name,
-            progress_bar=True,  # Enable tqdm progress bar
         )
 
         # Save final model

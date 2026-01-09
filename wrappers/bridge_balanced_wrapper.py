@@ -35,13 +35,15 @@ class BridgeBalancedWrapper(gym.Wrapper):
         frame_skip=4,
 
         # MODERATE base penalties (not zero, not extreme)
-        smoothness_coef=0.02,           # Soft but present (was 0.01→0.03)
+        smoothness_coef=0.05,           # Natural walking: penalize jerky actions
         hull_angle_coef=0.03,           # Soft but present (was 0.02→0.04)
         hull_angular_vel_coef=0.015,    # Soft but present (was 0.01→0.02)
 
-        # Movement quality
+        # Movement quality (from natural walking config)
         knee_bend_reward=0.02,
         min_bend_threshold=0.3,
+        max_joint_velocity=2.0,         # Prevent legs moving too fast
+        velocity_penalty=0.02,          # Penalty for excessive joint velocity
 
         # MODERATE bridge shaping (SIMPLE - just 2 bonuses)
         stable_waiting_bonus=0.02,      # +0.02/step × 300 = +6.0 total
@@ -67,6 +69,8 @@ class BridgeBalancedWrapper(gym.Wrapper):
 
         self.knee_bend_reward = knee_bend_reward
         self.min_bend_threshold = min_bend_threshold
+        self.max_joint_velocity = max_joint_velocity
+        self.velocity_penalty = velocity_penalty
 
         # Bridge shaping - SIMPLE
         self.stable_waiting_bonus = stable_waiting_bonus
@@ -149,19 +153,37 @@ class BridgeBalancedWrapper(gym.Wrapper):
         info['is_stable'] = is_stable
         info['total_distance'] = self.total_distance
 
-        # === BASE PENALTIES (ALWAYS APPLIED - soft but present) ===
-        action_diff = action - self.prev_action
-        smoothness_penalty = self.smoothness_coef * np.sum(action_diff ** 2)
+        # === BASE PENALTIES (ALWAYS APPLIED - natural walking quality) ===
+        # Action smoothness (mean absolute difference - more effective than squared)
+        action_diff = np.abs(action - self.prev_action)
+        avg_action_change = np.mean(action_diff)
+        smoothness_penalty = self.smoothness_coef * avg_action_change
         total_reward -= smoothness_penalty
+        info['smoothness_penalty'] = smoothness_penalty
 
+        # Hull angle/velocity penalties
         hull_angle = obs[0]
         hull_angular_vel = obs[1]
         hull_penalty = (self.hull_angle_coef * (hull_angle ** 2) +
                        self.hull_angular_vel_coef * (hull_angular_vel ** 2))
         total_reward -= hull_penalty
-
-        info['smoothness_penalty'] = smoothness_penalty
         info['hull_penalty'] = hull_penalty
+
+        # Joint velocity penalty (prevent legs moving too fast)
+        # obs[4], [5] = leg1 joint velocities
+        # obs[8], [10] = leg2 joint velocities  
+        joint_velocities = [abs(obs[4]), abs(obs[5]), abs(obs[8]), abs(obs[10])]
+        velocity_excess = 0.0
+        for vel in joint_velocities:
+            if vel > self.max_joint_velocity:
+                velocity_excess += (vel - self.max_joint_velocity)
+        
+        if velocity_excess > 0:
+            vel_penalty = self.velocity_penalty * velocity_excess
+            total_reward -= vel_penalty
+            info['velocity_penalty'] = vel_penalty
+        else:
+            info['velocity_penalty'] = 0.0
 
         # === MOVEMENT QUALITY ===
         knee_reward = 0.0

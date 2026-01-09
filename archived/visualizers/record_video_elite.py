@@ -8,7 +8,7 @@ import argparse
 import time
 import numpy as np
 
-from elite_hardcore_wrapper import EliteHardcoreWrapper
+from wrappers.elite_hardcore_wrapper import EliteHardcoreWrapper
 
 
 def main():

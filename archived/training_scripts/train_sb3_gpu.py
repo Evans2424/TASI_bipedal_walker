@@ -43,7 +43,7 @@ from natural_walking_wrappers import NaturalWalkingWrapper, make_natural_walking
 # Import human gait wrappers (research-based anti-jumping)
 from human_gait_wrappers import HumanGaitWrapper, make_human_gait_env
 # Import elite hardcore wrapper (unified hardcore + natural walking)
-from elite_hardcore_wrapper import EliteHardcoreWrapper
+from wrappers.elite_hardcore_wrapper import EliteHardcoreWrapper
 
 # Setup logging
 logging.basicConfig(

@@ -24,7 +24,7 @@ This allows bridges to work while maintaining hardcore obstacle-solving ability.
 
 import numpy as np
 import gymnasium as gym
-from elite_hardcore_wrapper import EliteHardcoreWrapper
+from wrappers.elite_hardcore_wrapper import EliteHardcoreWrapper
 
 
 class EliteHardcoreBridgeWrapper(EliteHardcoreWrapper):

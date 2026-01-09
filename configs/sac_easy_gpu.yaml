@@ -26,6 +26,7 @@ algorithm:
   gamma: 0.99
   train_freq: 1
   gradient_steps: 1
+  alpha: 0.2                        
   
   # Policy network (RL Zoo3 architecture)
   net_arch: [400, 300]             # RL Zoo3 tuned architecture

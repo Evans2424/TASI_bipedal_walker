@@ -45,18 +45,19 @@
 % ============================
 \section{Introduction}
 
-Bipedal locomotion is a fundamental challenge in robotics requiring agents to learn stable walking while optimizing multiple objectives: forward progress, energy efficiency, and postural stability. Deep Reinforcement Learning (DRL) has emerged as a powerful approach for solving such continuous control problems.
+Continuous control tasks, such as robotic locomotion, remain a critical benchmark for evaluating Deep Reinforcement Learning (DRL) algorithms. While recent advances in model-free RL have demonstrated impressive capabilities across various domains, practitioners often face the challenge of selecting appropriate algorithms for specific task characteristics. The BipedalWalker-v3 environment~\cite{brockman2016openai} has emerged as a standard benchmark for bipedal locomotion, offering a controlled testbed where algorithmic differences become apparent across varying levels of environmental complexity.
 
-Three leading algorithms dominate the continuous control landscape: TD3~\cite{fujimoto2018addressing} addresses DDPG's overestimation through twin critics; SAC~\cite{haarnoja2018soft} balances exploration and exploitation via entropy regularization; PPO~\cite{schulman2017proximal} provides on-policy stability with clipped objectives.
+Three prominent DRL algorithms have dominated the continuous control landscape: Twin Delayed Deep Deterministic Policy Gradient (TD3)~\cite{fujimoto2018addressing}, which addresses overestimation bias through twin critics and delayed policy updates; Soft Actor-Critic (SAC)~\cite{haarnoja2018soft}, which balances exploration and exploitation via maximum entropy reinforcement learning; and Proximal Policy Optimization (PPO)~\cite{schulman2017proximal}, an on-policy method providing stable updates through clipped objectives. Despite their widespread adoption, comparative studies evaluating these algorithms across multiple difficulty levels with consistent experimental protocols remain limited.
 
-\textbf{This study contributes:}
+This work addresses this gap through a systematic empirical comparison on BipedalWalker-v3, encompassing three progressively challenging variants: standard terrain with minor perturbations, hardcore mode featuring complex obstacles (stairs, stumps, pitfalls), and a novel custom environment introducing dynamic bridge obstacles that demand non-trivial strategic behavior. Beyond standard performance metrics, we investigate the critical role of reward engineering in achieving natural locomotion patterns—an aspect often overlooked in benchmark comparisons but essential for practical deployment.
+
+\textbf{The main contributions of this work are as follows:}
 \begin{itemize}
-    \item Systematic comparison of TD3, SAC, and PPO on bipedal walking
-    \item Evaluation across three terrain variants (easy, hardcore, hardcore+bridges)
-    \item Hyperparameter tuning analysis for each algorithm
-    \item Performance metrics from comprehensive evaluation framework
-    \item Training convergence analysis and stability comparison
+    \item Detailed comparison of TD3, SAC, and PPO algorithms on the BipedalWalker-v3 environment across three difficulty levels: standard terrain, hardcore obstacles, and custom bridge scenarios
+    \item Custom environment extension introducing dynamic bridge obstacles that require implementing specialized strategies.
+    \item We make available an open-source implementation with trained models and custom rewards, focused on achieving more natural locomotion behaviors.
 \end{itemize}
+
 
 % ============================
 % PROBLEM FORMULATION

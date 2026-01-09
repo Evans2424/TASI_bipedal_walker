@@ -18,28 +18,35 @@ env:
   name: "CustomBipedalWalker-v3"
   hardcore: true
   normalize_observations: true
-  normalize_rewards: false          # DISABLED - we control reward scale
+  normalize_rewards: true           # ENABLED for consistency with hardcore/easy
   clip_normalized_obs: 10.0
   clip_normalized_reward: 10.0
 
-  # Use balanced wrapper
-  use_bridge_balanced: true
+  # Use bridge wrapper
+  use_bridge_wrapper: true
 
   # Frame skip
   frame_skip: 4
 
   # MODERATE base penalties (soft but present)
-  smoothness_coef: 0.02             # Soft (between 0.01-0.03)
-  hull_angle_coef: 0.03             # Soft (between 0.02-0.04)
-  hull_angular_vel_coef: 0.015      # Soft (between 0.01-0.02)
+  # smoothness_coef: 0.02             # Soft (between 0.01-0.03)
+  # hull_angle_coef: 0.03             # Soft (between 0.02-0.04)
+  # hull_angular_vel_coef: 0.015      # Soft (between 0.01-0.02)
+
+  # BALANCED penalties - Strong enough for natural movement, weak enough for bridge learning
+  # ~40% of hardcore strength (hardcore: 0.2/0.1/0.05)
+  smoothness_coef: 0.08            # Medium strength (encourage smooth actions)
+  hull_angle_coef: 0.05            # Medium strength (encourage upright posture)
+  hull_angular_vel_coef: 0.025     # Medium strength (reduce spinning)
+
 
   # Movement quality
   knee_bend_reward: 0.02
   min_bend_threshold: 0.3
 
   # MODERATE bridge shaping (SIMPLE - just 2 bonuses)
-  stable_waiting_bonus: 0.02        # +0.02/step (300 steps = +6.0 total)
-  bridge_cross_bonus: 8.0           # +8.0 for crossing
+  stable_waiting_bonus: 0.03        # +0.02/step (300 steps = +6.0 total)
+  bridge_cross_bonus: 10.0           # +8.0 for crossing
   # NO detect_bonus, NO stop_bonus, NO velocity_bonus
 
   # Anti-exploit (stricter)
@@ -55,40 +62,54 @@ env:
   # Evaluation
   num_eval_envs: 5
 
-# SAC hyperparameters (proven from RL Zoo3)
-agent:
-  type: "sac"
-  hidden_dims: [400, 300]
-  learning_rate: 7.3e-4
-  use_linear_schedule: true
-  gamma: 0.99
-  tau: 0.01
-  alpha: 0.2
-  automatic_entropy_tuning: true
-  target_entropy: -0.5
-
-buffer:
-  capacity: 2000000
-  batch_size: 256
-
-training:
-  total_timesteps: 10000000         # 10M steps (shorter for testing)
+# SAC Algorithm parameters (RL Zoo3 tuned for BipedalWalker)
+algorithm:
+  learning_rate: 7.3e-4           # RL Zoo3 tuned value
+  buffer_size: 2000000
   learning_starts: 10000
-  train_frequency: 1
-  gradient_steps: 1
-  eval_frequency: 25000
-  eval_episodes: 10
-  save_frequency: 100000
-  log_frequency: 2000
+  batch_size: 256
+  tau: 0.01                        # RL Zoo3 uses 0.01
+  gamma: 0.99                      # Natural walking: prioritize immediate rewards
+  train_freq: 1
+  gradient_steps: 1                # Single update per step (faster, same as easy/hardcore)
+  
+  # Policy network (RL Zoo3 architecture)
+  net_arch: [400, 300]             # RL Zoo3 tuned architecture
+  
+  # Entropy tuning
+  ent_coef: "auto"                 # Auto-tune entropy coefficient
+  target_entropy: "auto"           # Let SB3 calculate optimal value
+  use_sde: false                   # Don't use state-dependent exploration
 
+# Training settings
+training:
+  total_timesteps: 10000000
+  n_envs: 8
+  eval_freq: 25000
+  eval_episodes: 10
+  save_freq: 100000
+  log_interval: 10
+  
+  # Early stopping
+  early_stopping:
+    use_reward_threshold: false
+    reward_threshold: 300.0
+    use_no_improvement_stop: true
+    patience: 15
+    min_evals: 30
+  
+  # Evaluation
+  eval_log_path: "experiments/logs/sac_bridge_balanced"
+  tensorboard_log: "experiments/logs/sac_bridge_balanced"
+
+# Checkpoint settings
+checkpoint:
+  save_path: "experiments/checkpoints/sac_bridge_balanced"
+  save_replay_buffer: false
+
+# Experiment settings
 experiment:
-  name: "sac_bridge_balanced_gpu"
+  name: "sac_bridge_balanced"
   seed: 99
   device: "mps"
-
-paths:
-  checkpoints: "experiments/checkpoints"
-  logs: "experiments/logs"
-
-gpu:
-  num_parallel_envs: 8
+  verbose: 1

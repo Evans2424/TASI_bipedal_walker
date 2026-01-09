@@ -11,7 +11,7 @@ This prevents agent from exploiting waiting detection at episode start.
 
 import numpy as np
 import gymnasium as gym
-from elite_hardcore_wrapper import EliteHardcoreWrapper
+from wrappers.elite_hardcore_wrapper import EliteHardcoreWrapper
 
 
 class EliteHardcoreBridgeWrapperV2(EliteHardcoreWrapper):
