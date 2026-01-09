@@ -8,14 +8,13 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Import custom walker environment
+from custom_walker import BipedalWalker
+from elite_hardcore_bridge_wrapper import EliteHardcoreBridgeWrapper
 
 from src.agents import TD3Agent
 from src.envs.env_wrapper import BipedalWalkerWrapper
-from src.envs.custom_walker import BipedalWalker
 from src.utils import ReplayBuffer, Logger, set_seed
-from wrappers.bridge_balanced_wrapper import BridgeBalancedWrapper
 
 
 def make_custom_env(
@@ -66,33 +65,19 @@ def make_custom_env(
     
     # Apply bridge-aware wrapper for better bridge learning
     if use_bridge_wrapper:
-        # First apply BridgeBalancedWrapper for bridge-specific rewards
-        env = BridgeBalancedWrapper(
+        env = EliteHardcoreBridgeWrapper(
             env,
             frame_skip=frame_skip,
             smoothness_coef=smoothness_coef,
             hull_angle_coef=hull_angle_coef,
             hull_angular_vel_coef=hull_angular_vel_coef,
-            waiting_velocity_threshold=0.15,
-            waiting_angle_threshold=0.3,
-        )
-        # Then apply BipedalWalkerWrapper for normalization (without frame_skip/penalties since handled above)
-        env = BipedalWalkerWrapper(
-            env,
-            reward_scale=reward_scale,
-            clip_observations=clip_observations,
-            clip_actions=clip_actions,
-            normalize_observations=normalize_observations,
-            normalize_rewards=normalize_rewards,
-            clip_normalized_obs=clip_normalized_obs,
-            clip_normalized_reward=clip_normalized_reward,
-            frame_skip=1,  # Already handled by BridgeBalancedWrapper
-            smoothness_coef=0.0,  # Already handled by BridgeBalancedWrapper
-            hull_angle_coef=0.0,  # Already handled by BridgeBalancedWrapper
-            hull_angular_vel_coef=0.0  # Already handled by BridgeBalancedWrapper
+            waiting_velocity_threshold=0.15,  # More lenient waiting detection
+            waiting_angle_threshold=0.4,  # Allow more tilt while waiting
+            penalty_reduction_factor=0.05,  # Reduce penalties to 5% (95% reduction!)
+            patience_bonus=0.03,  # 6x increase - strongly reward waiting
         )
     else:
-        # Fallback to original wrapper only
+        # Fallback to original wrapper
         env = BipedalWalkerWrapper(
             env,
             reward_scale=reward_scale,

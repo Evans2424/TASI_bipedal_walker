@@ -42,6 +42,9 @@ ENV/
 *.pth
 *replay_buffer*.pkl
 experiments/logs/
+experiments/videos/
+*.mp4
+videos/
 
 # Data
 data/
@@ -59,3 +62,4 @@ experiments/checkpoints/sac_elite_unified_hardcore_gpu_custom_bridges
 experiments/checkpoints/sac_elite_unified_hardcore_gpu_custom_bridges_OLD_no_bridge_fix
 
 bipedal_venv
+models/

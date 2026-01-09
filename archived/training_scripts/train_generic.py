@@ -1,5 +1,10 @@
 """Main training script for Bipedal Walker."""
 
+from custom_walker import BipedalWalker
+
+# Instantiate your custom class directly
+env = BipedalWalker(hardcore=True)
+
 import os
 import argparse
 import yaml
