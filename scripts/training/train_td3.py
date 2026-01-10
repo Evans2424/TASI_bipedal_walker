@@ -1,388 +1,386 @@
-"""Custom training script for TD3 using custom walker environment."""
+#!/usr/bin/env python3
+"""Train TD3 on BipedalWalker - Support for Easy, Hardcore, and Bridges modes
+
+Usage:
+    # Easy mode (no obstacles)
+    python scripts/training/train_generic.py --config configs/td3_easy.yaml
+    
+    # Hardcore mode
+    python scripts/training/train_generic.py --config configs/td3_hardcore.yaml
+    
+    # Bridges mode
+    python scripts/training/train_generic.py --config configs/td3_bridges.yaml
+"""
 
 import os
 import sys
+import logging
 import argparse
 import yaml
 import torch
-import numpy as np
-from tqdm import tqdm
+from pathlib import Path
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import gymnasium as gym
+from gymnasium.envs.registration import register
 
-from src.agents import TD3Agent
-from src.envs.env_wrapper import BipedalWalkerWrapper
-from src.envs.custom_walker import BipedalWalker
-from src.utils import ReplayBuffer, Logger, set_seed
-from wrappers.bridge_balanced_wrapper import BridgeBalancedWrapper
+from stable_baselines3 import TD3
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize, VecMonitor, DummyVecEnv
+from stable_baselines3.common.callbacks import (
+    EvalCallback, CheckpointCallback, CallbackList,
+    StopTrainingOnRewardThreshold, StopTrainingOnNoModelImprovement
+)
+from stable_baselines3.common.monitor import Monitor
+
+# Add project root to path for imports
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, project_root)
+
+from src.wrappers.bridge_balanced_wrapper import BridgeBalancedWrapper
+from src.wrappers.hardcore_wrappers import HardcoreWrapper
+
+# Register custom walker environment for bridges mode
+register(
+    id='CustomBipedalWalker-v3',
+    entry_point='src.envs.custom_walker:BipedalWalker',
+    max_episode_steps=2000,
+    reward_threshold=300,
+)
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 
-def make_custom_env(
-    hardcore: bool = False,
-    render_mode: str = None,
-    reward_scale: float = 1.0,
-    clip_observations: bool = False,
-    clip_actions: bool = True,
-    normalize_observations: bool = False,
-    normalize_rewards: bool = False,
-    clip_normalized_obs: float = 10.0,
-    clip_normalized_reward: float = 10.0,
-    frame_skip: int = 1,
-    smoothness_coef: float = 0.0,
-    hull_angle_coef: float = 0.0,
-    hull_angular_vel_coef: float = 0.0,
-    use_bridge_wrapper: bool = True,
-    seed: int = None
-):
-    """Create custom walker environment with bridge-aware wrapper.
-    
-    Args:
-        hardcore: Use hardcore mode
-        render_mode: Render mode ('human', 'rgb_array', None)
-        reward_scale: Scale factor for rewards
-        clip_observations: Whether to clip observations
-        clip_actions: Whether to clip actions
-        normalize_observations: Whether to normalize observations
-        normalize_rewards: Whether to normalize rewards
-        clip_normalized_obs: Clipping range for normalized observations
-        clip_normalized_reward: Clipping range for normalized rewards
-        frame_skip: Number of frames to skip
-        smoothness_coef: Penalty coefficient for action smoothness
-        hull_angle_coef: Penalty coefficient for hull angle
-        hull_angular_vel_coef: Penalty coefficient for hull angular velocity
-        use_bridge_wrapper: Use bridge-aware wrapper for better bridge learning
-        seed: Random seed
+def linear_schedule(initial_value: float):
+    """Linear learning rate schedule."""
+    def func(progress_remaining: float) -> float:
+        return progress_remaining * initial_value
+    return func
+
+
+def make_env(rank: int, seed: int, config: dict):
+    """Create environment based on configuration."""
+    def _init():
+        env_config = config['env']
+        hardcore = env_config.get('hardcore', False)
+        use_bridge_wrapper = env_config.get('use_bridge_wrapper', False)
+        use_hardcore_wrapper = env_config.get('use_hardcore_wrapper', False)
+        env_name = env_config.get('name', 'BipedalWalker-v3')
         
-    Returns:
-        Wrapped custom environment
-    """
-    # Create custom walker environment
-    env = BipedalWalker(render_mode=render_mode, hardcore=hardcore)
-    
-    # Set seed if provided
-    if seed is not None:
-        env.reset(seed=seed)
-    
-    # Apply bridge-aware wrapper for better bridge learning
-    if use_bridge_wrapper:
-        # First apply BridgeBalancedWrapper for bridge-specific rewards
-        env = BridgeBalancedWrapper(
-            env,
-            frame_skip=frame_skip,
-            smoothness_coef=smoothness_coef,
-            hull_angle_coef=hull_angle_coef,
-            hull_angular_vel_coef=hull_angular_vel_coef,
-            waiting_velocity_threshold=0.15,
-            waiting_angle_threshold=0.3,
-        )
-        # Then apply BipedalWalkerWrapper for normalization (without frame_skip/penalties since handled above)
-        env = BipedalWalkerWrapper(
-            env,
-            reward_scale=reward_scale,
-            clip_observations=clip_observations,
-            clip_actions=clip_actions,
-            normalize_observations=normalize_observations,
-            normalize_rewards=normalize_rewards,
-            clip_normalized_obs=clip_normalized_obs,
-            clip_normalized_reward=clip_normalized_reward,
-            frame_skip=1,  # Already handled by BridgeBalancedWrapper
-            smoothness_coef=0.0,  # Already handled by BridgeBalancedWrapper
-            hull_angle_coef=0.0,  # Already handled by BridgeBalancedWrapper
-            hull_angular_vel_coef=0.0  # Already handled by BridgeBalancedWrapper
-        )
-    else:
-        # Fallback to original wrapper only
-        env = BipedalWalkerWrapper(
-            env,
-            reward_scale=reward_scale,
-            clip_observations=clip_observations,
-            clip_actions=clip_actions,
-            normalize_observations=normalize_observations,
-            normalize_rewards=normalize_rewards,
-            clip_normalized_obs=clip_normalized_obs,
-            clip_normalized_reward=clip_normalized_reward,
-            frame_skip=frame_skip,
-            smoothness_coef=smoothness_coef,
-            hull_angle_coef=hull_angle_coef,
-            hull_angular_vel_coef=hull_angular_vel_coef
-        )
-    
-    return env
-
-
-def load_config(config_path: str) -> dict:
-    """Load configuration from YAML file.
-
-    Args:
-        config_path: Path to config file
-
-    Returns:
-        Configuration dictionary
-    """
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
-    return config
-
-
-def create_agent(config: dict, observation_dim: int, action_dim: int):
-    """Create TD3 agent based on configuration.
-
-    Args:
-        config: Configuration dictionary
-        observation_dim: Observation space dimension
-        action_dim: Action space dimension
-
-    Returns:
-        Initialized TD3 agent
-    """
-    agent_config = config['agent']
-
-    return TD3Agent(
-        observation_dim=observation_dim,
-        action_dim=action_dim,
-        hidden_dims=tuple(agent_config['hidden_dims']),
-        learning_rate=agent_config['learning_rate'],
-        gamma=agent_config['gamma'],
-        tau=agent_config['tau'],
-        target_noise=agent_config['target_noise'],
-        noise_clip=agent_config['noise_clip'],
-        policy_update_freq=agent_config['policy_update_freq'],
-        device=config['experiment']['device'],
-        seed=config['experiment']['seed']
-    )
-
-
-def evaluate(agent, config: dict, num_episodes: int = 10) -> list:
-    """Evaluate agent performance.
-
-    Args:
-        agent: Trained agent
-        config: Configuration dictionary
-        num_episodes: Number of evaluation episodes
-
-    Returns:
-        List of episode rewards
-    """
-    eval_env = make_custom_env(
-        hardcore=config['env']['hardcore'],
-        normalize_observations=config['env'].get('normalize_observations', False),
-        normalize_rewards=config['env'].get('normalize_rewards', False),
-        clip_normalized_obs=config['env'].get('clip_normalized_obs', 10.0),
-        clip_normalized_reward=config['env'].get('clip_normalized_reward', 10.0),
-        frame_skip=config['env'].get('frame_skip', 1),
-        smoothness_coef=config['env'].get('smoothness_coef', 0.0),
-        hull_angle_coef=config['env'].get('hull_angle_coef', 0.0),
-        hull_angular_vel_coef=config['env'].get('hull_angular_vel_coef', 0.0),
-        seed=config['experiment']['seed'] + 999  # Different seed for eval
-    )
-
-    episode_rewards = []
-
-    for _ in range(num_episodes):
-        observation, _ = eval_env.reset()
-        episode_reward = 0
-        done = False
-
-        while not done:
-            action = agent.select_action(observation, deterministic=True)
-            observation, reward, terminated, truncated, _ = eval_env.step(action)
-            episode_reward += reward
-            done = terminated or truncated
-
-        episode_rewards.append(episode_reward)
-
-    eval_env.close()
-    return episode_rewards
-
-
-def train_td3(config: dict):
-    """Train using TD3 algorithm with custom walker.
-
-    Args:
-        config: Configuration dictionary
-    """
-    # Set seed
-    set_seed(config['experiment']['seed'])
-
-    # Create CUSTOM environment with bridge-aware wrapper
-    env = make_custom_env(
-        hardcore=config['env']['hardcore'],
-        reward_scale=config['env']['reward_scale'],
-        clip_observations=config['env']['clip_observations'],
-        clip_actions=config['env']['clip_actions'],
-        normalize_observations=config['env'].get('normalize_observations', False),
-        normalize_rewards=config['env'].get('normalize_rewards', False),
-        clip_normalized_obs=config['env'].get('clip_normalized_obs', 10.0),
-        clip_normalized_reward=config['env'].get('clip_normalized_reward', 10.0),
-        frame_skip=config['env'].get('frame_skip', 1),
-        smoothness_coef=config['env'].get('smoothness_coef', 0.2),
-        hull_angle_coef=config['env'].get('hull_angle_coef', 0.1),
-        hull_angular_vel_coef=config['env'].get('hull_angular_vel_coef', 0.05),
-        use_bridge_wrapper=True,  # Enable bridge-aware wrapper
-        seed=config['experiment']['seed']
-    )
-
-    # Get dimensions
-    observation_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.shape[0]
-
-    # Create agent
-    agent = create_agent(config, observation_dim, action_dim)
-    
-    # Load checkpoint if specified (for curriculum learning)
-    if 'load_checkpoint' in config['experiment'] and config['experiment']['load_checkpoint']:
-        checkpoint_path = config['experiment']['load_checkpoint']
-        if os.path.exists(checkpoint_path):
-            print(f"\n{'='*50}")
-            print(f"Loading checkpoint from: {checkpoint_path}")
-            print(f"{'='*50}\n")
-            agent.load(checkpoint_path)
+        # Create environment
+        if use_bridge_wrapper:
+            # Use custom walker with bridges
+            env = gym.make("CustomBipedalWalker-v3", hardcore=True)
         else:
-            print(f"\nWARNING: Checkpoint not found: {checkpoint_path}")
-            print("Starting training from scratch.\n")
+            # Standard BipedalWalker
+            env = gym.make(env_name, hardcore=hardcore)
+        
+        env.reset(seed=seed + rank)
+        
+        # Apply wrapper based on mode
+        if use_bridge_wrapper:
+            wrapper_kwargs = {
+                'frame_skip': env_config.get('frame_skip', 4),
+                'smoothness_coef': env_config.get('smoothness_coef', 0.02),
+                'hull_angle_coef': env_config.get('hull_angle_coef', 0.03),
+                'hull_angular_vel_coef': env_config.get('hull_angular_vel_coef', 0.015),
+                'knee_bend_reward': env_config.get('knee_bend_reward', 0.02),
+                'min_bend_threshold': env_config.get('min_bend_threshold', 0.3),
+                'stable_waiting_bonus': env_config.get('stable_waiting_bonus', 0.02),
+                'bridge_cross_bonus': env_config.get('bridge_cross_bonus', 8.0),
+                'min_progress_for_bonuses': env_config.get('min_progress_for_bonuses', 15.0),
+                'max_waiting_steps': env_config.get('max_waiting_steps', 400),
+                'lidar_bridge_threshold': env_config.get('lidar_bridge_threshold', 0.5),
+                'min_close_beams': env_config.get('min_close_beams', 3),
+                'waiting_velocity_threshold': env_config.get('waiting_velocity_threshold', 0.15),
+                'waiting_angle_threshold': env_config.get('waiting_angle_threshold', 0.3),
+            }
+            env = BridgeBalancedWrapper(env, **wrapper_kwargs)
+        elif use_hardcore_wrapper and hardcore:
+            # Apply unified hardcore wrapper (includes frame skip, smoothness, stability, reward clipping)
+            wrapper_kwargs = {
+                'frame_skip': env_config.get('frame_skip', 4),
+                'smoothness_coef': env_config.get('smoothness_coef', 0.05),
+                'angle_coef': env_config.get('angle_coef', 0.02),
+                'angular_vel_coef': env_config.get('angular_vel_coef', 0.01),
+                'reward_clip_min': env_config.get('reward_clip_min', -10.0),
+                'reward_clip_max': env_config.get('reward_clip_max', 10.0),
+            }
+            env = HardcoreWrapper(env, **wrapper_kwargs)
+        
+        env = Monitor(env)
+        return env
+    return _init
 
-    # Create replay buffer
-    buffer = ReplayBuffer(
-        observation_dim,
-        action_dim,
-        capacity=config['buffer']['capacity'],
-        seed=config['experiment']['seed']
-    )
 
-    # Create logger
-    logger = Logger(config['paths']['logs'], config['experiment']['name'])
-    logger.save_config(config)
-
-    # Training loop
-    observation, _ = env.reset()
-    episode_reward = 0
-    episode_length = 0
-    episode_count = 0
-
-    total_timesteps = config['training']['total_timesteps']
-    learning_starts = config['training']['learning_starts']
-    batch_size = config['buffer']['batch_size']
-
-    pbar = tqdm(total=total_timesteps, desc="Training")
-
-    for step in range(total_timesteps):
-        # Select action (random for initial exploration)
-        if step < config['exploration']['initial_random_steps']:
-            action = env.action_space.sample()
+def get_device(requested_device: str) -> str:
+    """Get available device with fallback."""
+    if requested_device == "auto":
+        if torch.cuda.is_available():
+            return "cuda"
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            return "mps"
         else:
-            action = agent.select_action(observation, deterministic=False)
-
-        # Take step
-        next_observation, reward, terminated, truncated, info = env.step(action)
-        done = terminated or truncated
-
-        # Store transition
-        buffer.add(observation, action, reward, next_observation, done)
-
-        episode_reward += reward
-        episode_length += 1
-
-        # Update observation
-        observation = next_observation
-
-        # Handle episode end
-        if done:
-            logger.log_episode(episode_reward, episode_length, step)
-            episode_count += 1
-
-            observation, _ = env.reset()
-            episode_reward = 0
-            episode_length = 0
-
-        # Update progress bar (less frequently for performance)
-        pbar.update(1)
-        if done or step % 1000 == 0:
-            stats = logger.get_stats()
-            if stats:
-                pbar.set_postfix({
-                    'episodes': episode_count,
-                    'mean_reward_100': f"{stats.get('mean_reward_100', 0):.2f}"
-                })
-
-        # Update agent
-        if step >= learning_starts:
-            batch = buffer.sample(batch_size)
-            metrics = agent.update(batch)
-
-            if step % config['training']['log_frequency'] == 0:
-                logger.log_metrics(metrics, step, prefix="train")
-
-        # Evaluation
-        if step % config['training']['eval_frequency'] == 0 and step > 0:
-            eval_rewards = evaluate(agent, config, config['training']['eval_episodes'])
-            logger.log_scalar("eval/mean_reward", np.mean(eval_rewards), step)
-            logger.log_scalar("eval/std_reward", np.std(eval_rewards), step)
-
-            print(f"\nStep {step}: Eval mean reward = {np.mean(eval_rewards):.2f} +/- {np.std(eval_rewards):.2f}")
-
-        # Save checkpoint
-        if step % config['training']['save_frequency'] == 0 and step > 0:
-            checkpoint_dir = os.path.join(config['paths']['checkpoints'], config['experiment']['name'])
-            os.makedirs(checkpoint_dir, exist_ok=True)
-            checkpoint_path = os.path.join(checkpoint_dir, f"checkpoint_{step}.pt")
-            agent.save(checkpoint_path)
-            print(f"\nSaved checkpoint to {checkpoint_path}")
-
-        pbar.update(1)
-
-    pbar.close()
-
-    # Final save
-    checkpoint_dir = os.path.join(config['paths']['checkpoints'], config['experiment']['name'])
-    os.makedirs(checkpoint_dir, exist_ok=True)
-    final_path = os.path.join(checkpoint_dir, "final_model.pt")
-    agent.save(final_path)
-
-    print(f"\nTraining completed! Final model saved to {final_path}")
-
-    # Clean up intermediate checkpoints
-    print("\nCleaning up intermediate checkpoints...")
-    for file in os.listdir(checkpoint_dir):
-        if file.startswith("checkpoint_") and file.endswith(".pt"):
-            checkpoint_path = os.path.join(checkpoint_dir, file)
-            os.remove(checkpoint_path)
-            print(f"Removed {file}")
-    print("Cleanup completed! Only final_model.pt is kept.")
-
-    env.close()
-    logger.close()
+            return "cpu"
+    return requested_device
 
 
 def main():
-    """Main entry point."""
-    parser = argparse.ArgumentParser(description="Train TD3 agent on Custom Bipedal Walker")
-    parser.add_argument(
-        "--config",
-        type=str,
-        default="configs/td3_hardcore_advanced.yaml",
-        help="Path to config file"
-    )
+    parser = argparse.ArgumentParser(description="Train RL agent on BipedalWalker")
+    parser.add_argument("--config", type=str, required=True, help="Path to config file")
     args = parser.parse_args()
 
-    # Load configuration
-    config = load_config(args.config)
+    try:
+        # Load configuration
+        logger.info("=" * 60)
+        logger.info("BIPEDAL WALKER TRAINING")
+        logger.info("=" * 60)
+        logger.info(f"Loading config from: {args.config}")
 
-    # Print configuration
-    print("="*50)
-    print("Training Configuration - CUSTOM WALKER")
-    print("="*50)
-    print(f"Agent: TD3")
-    print(f"Environment: Custom BipedalWalker")
-    print(f"Hardcore: {config['env']['hardcore']}")
-    print(f"Total timesteps: {config['training']['total_timesteps']:,}")
-    print(f"Device: {config['experiment']['device']}")
-    print(f"Seed: {config['experiment']['seed']}")
-    print("="*50)
+        with open(args.config, 'r') as f:
+            config = yaml.safe_load(f)
 
-    # Train
-    train_td3(config)
+        logger.info("✓ Configuration loaded")
+
+        # Parse config
+        env_config = config['env']
+        algorithm_config = config['algorithm']
+        training_config = config['training']
+        checkpoint_config = config['checkpoint']
+        experiment_config = config['experiment']
+
+        # Determine mode
+        hardcore = env_config.get('hardcore', False)
+        use_bridges = env_config.get('use_bridge_wrapper', False)
+        
+        if use_bridges:
+            mode = "BRIDGES (Custom Walker)"
+        elif hardcore:
+            mode = "HARDCORE (Standard)"
+        else:
+            mode = "EASY (Standard)"
+        
+        logger.info(f"✓ Training Mode: {mode}")
+
+        device = get_device(experiment_config['device'])
+        logger.info(f"✓ Using device: {device}")
+
+        # Setup paths
+        experiment_name = experiment_config['name']
+        checkpoint_dir = Path(checkpoint_config['save_path'])
+        log_dir = Path(training_config['tensorboard_log'])
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+        logger.info(f"✓ Checkpoints: {checkpoint_dir}")
+        logger.info(f"✓ Logs: {log_dir}")
+
+        # Configuration
+        num_envs = training_config['n_envs']
+        seed = experiment_config['seed']
+        total_timesteps = training_config['total_timesteps']
+
+        logger.info(f"✓ Parallel Environments: {num_envs}")
+        logger.info(f"✓ Total Timesteps: {total_timesteps:,}")
+        logger.info(f"✓ Seed: {seed}")
+
+        # Create vectorized environment
+        logger.info("Creating environments...")
+        env_fns = [make_env(i, seed, config) for i in range(num_envs)]
+        
+        if num_envs > 1:
+            env = SubprocVecEnv(env_fns)
+        else:
+            env = DummyVecEnv(env_fns)
+        
+        # Wrap with VecMonitor
+        env = VecMonitor(env)
+        
+        # Apply normalization if specified
+        if env_config.get('normalize_observations', False) or env_config.get('normalize_rewards', False):
+            env = VecNormalize(
+                env,
+                norm_obs=env_config.get('normalize_observations', False),
+                norm_reward=env_config.get('normalize_rewards', False),
+                clip_obs=env_config.get('clip_normalized_obs', 10.0),
+                clip_reward=env_config.get('clip_normalized_reward', 10.0),
+            )
+            logger.info("✓ VecNormalize applied")
+        
+        logger.info("✓ Environments created")
+
+        # Create evaluation environment
+        logger.info("Creating evaluation environment...")
+        eval_env = DummyVecEnv([make_env(0, seed + 1000, config)])
+        eval_env = VecMonitor(eval_env)
+        
+        if env_config.get('normalize_observations', False) or env_config.get('normalize_rewards', False):
+            eval_env = VecNormalize(
+                eval_env,
+                norm_obs=env_config.get('normalize_observations', False),
+                norm_reward=False,  # Don't normalize rewards during evaluation
+                clip_obs=env_config.get('clip_normalized_obs', 10.0),
+                clip_reward=env_config.get('clip_normalized_reward', 10.0),
+                training=False,  # Don't update stats during evaluation
+            )
+        
+        logger.info("✓ Evaluation environment created")
+
+        # Setup learning rate schedule
+        learning_rate = algorithm_config.get('learning_rate', 3e-4)
+        if isinstance(learning_rate, str) and learning_rate == "linear":
+            learning_rate = linear_schedule(3e-4)
+            logger.info("✓ Using linear learning rate schedule")
+        else:
+            logger.info(f"✓ Learning rate: {learning_rate}")
+
+        # Create TD3 agent
+        logger.info("Creating TD3 agent...")
+        
+        model = TD3(
+            "MlpPolicy",
+            env,
+            learning_rate=learning_rate,
+            buffer_size=algorithm_config.get('buffer_size', 1000000),
+            learning_starts=algorithm_config.get('learning_starts', 10000),
+            batch_size=algorithm_config.get('batch_size', 256),
+            tau=algorithm_config.get('tau', 0.005),
+            gamma=algorithm_config.get('gamma', 0.99),
+            train_freq=algorithm_config.get('train_freq', 1),
+            gradient_steps=algorithm_config.get('gradient_steps', 1),
+            policy_kwargs=dict(net_arch=algorithm_config.get('net_arch', [256, 256])),
+            policy_delay=algorithm_config.get('policy_delay', 2),
+            target_policy_noise=algorithm_config.get('target_policy_noise', 0.2),
+            target_noise_clip=algorithm_config.get('target_noise_clip', 0.5),
+            verbose=experiment_config.get('verbose', 1),
+            device=device,
+            tensorboard_log=str(log_dir),
+            seed=seed,
+        )
+        
+        logger.info("✓ TD3 agent created")
+
+        # Setup callbacks
+        logger.info("Setting up callbacks...")
+        callbacks = []
+        
+        # Early stopping parameters from config
+        early_stopping_config = training_config.get('early_stopping', {})
+        use_reward_threshold = early_stopping_config.get('use_reward_threshold', False)
+        reward_threshold = early_stopping_config.get('reward_threshold', 300.0)
+        use_no_improvement_stop = early_stopping_config.get('use_no_improvement_stop', False)
+        patience = early_stopping_config.get('patience', 10)
+        min_evals = early_stopping_config.get('min_evals', 0)
+        
+        # Evaluation callback (always needed)
+        eval_callback = EvalCallback(
+            eval_env,
+            best_model_save_path=str(checkpoint_dir),
+            log_path=str(log_dir),
+            eval_freq=training_config.get('eval_freq', 10000),
+            n_eval_episodes=training_config.get('eval_episodes', 10),
+            deterministic=True,
+            render=False,
+        )
+        
+        # Wrap with early stopping callbacks if enabled
+        if use_reward_threshold:
+            logger.info(f"✓ Early stopping enabled: Reward threshold = {reward_threshold}")
+            stop_callback = StopTrainingOnRewardThreshold(
+                reward_threshold=reward_threshold,
+                verbose=1
+            )
+            eval_callback = EvalCallback(
+                eval_env,
+                callback_after_eval=stop_callback,
+                best_model_save_path=str(checkpoint_dir),
+                log_path=str(log_dir),
+                eval_freq=training_config.get('eval_freq', 10000),
+                n_eval_episodes=training_config.get('eval_episodes', 10),
+                deterministic=True,
+                render=False,
+            )
+        
+        if use_no_improvement_stop:
+            logger.info(f"✓ Early stopping enabled: No improvement for {patience} evaluations")
+            no_improvement_callback = StopTrainingOnNoModelImprovement(
+                max_no_improvement_evals=patience,
+                min_evals=min_evals,
+                verbose=1
+            )
+            eval_callback = EvalCallback(
+                eval_env,
+                callback_after_eval=no_improvement_callback,
+                best_model_save_path=str(checkpoint_dir),
+                log_path=str(log_dir),
+                eval_freq=training_config.get('eval_freq', 10000),
+                n_eval_episodes=training_config.get('eval_episodes', 10),
+                deterministic=True,
+                render=False,
+            )
+        
+        callbacks.append(eval_callback)
+        
+        # Checkpoint callback
+        checkpoint_callback = CheckpointCallback(
+            save_freq=training_config.get('save_freq', 50000),
+            save_path=str(checkpoint_dir),
+            name_prefix="td3_model",
+            save_replay_buffer=checkpoint_config.get('save_replay_buffer', False),
+            save_vecnormalize=True,
+        )
+        callbacks.append(checkpoint_callback)
+        
+        callback = CallbackList(callbacks)
+        logger.info("✓ Callbacks configured")
+
+        # Start training
+        logger.info("=" * 60)
+        logger.info("STARTING TRAINING")
+        logger.info("=" * 60)
+        
+        model.learn(
+            total_timesteps=total_timesteps,
+            callback=callback,
+            log_interval=training_config.get('log_interval', 10),
+            tb_log_name=experiment_name,
+            progress_bar=True,  # Enable tqdm progress bar
+        )
+
+        # Save final model
+        logger.info("=" * 60)
+        logger.info("TRAINING COMPLETE")
+        logger.info("=" * 60)
+        
+        final_model_path = checkpoint_dir / "final_model"
+        model.save(final_model_path)
+        logger.info(f"✓ Final model saved to: {final_model_path}.zip")
+        
+        # Save VecNormalize stats if used
+        if isinstance(env, VecNormalize):
+            vecnormalize_path = checkpoint_dir / "final_model_vecnormalize.pkl"
+            env.save(str(vecnormalize_path))
+            logger.info(f"✓ VecNormalize stats saved to: {vecnormalize_path}")
+        
+        logger.info("✓ Training finished successfully!")
+
+    except Exception as e:
+        logger.error(f"✗ Training failed with error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    finally:
+        try:
+            env.close()
+            eval_env.close()
+        except:
+            pass
 
 
 if __name__ == "__main__":
     main()
+

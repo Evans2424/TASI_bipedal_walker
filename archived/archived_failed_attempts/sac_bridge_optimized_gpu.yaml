@@ -1,0 +1,74 @@
+# Bridge-Optimized SAC Configuration
+# Designed specifically for custom_walker.py with BRIDGE obstacles
+#
+# KEY DIFFERENCES FROM ELITE HARDCORE:
+# - Softer penalties (4x weaker smoothness, 2x weaker hull)
+# - Makes waiting for bridges viable (300-step wait only costs ~15 reward vs ~60)
+# - Forward progress remains primary learning signal
+# - Movement quality from weak positive shaping, not strong penalties
+
+env:
+  name: "CustomBipedalWalker-v3"  # Custom walker with bridges
+  hardcore: true
+  normalize_observations: true
+  normalize_rewards: true
+  clip_normalized_obs: 10.0
+  clip_normalized_reward: 10.0
+
+  # Bridge-optimized wrapper
+  use_bridge_optimized: true
+
+  # SOFT penalties (bridge-compatible)
+  frame_skip: 4
+  smoothness_coef: 0.05           # REDUCED from 0.2 (Elite Hardcore)
+  hull_angle_coef: 0.05           # REDUCED from 0.1
+  hull_angular_vel_coef: 0.02     # REDUCED from 0.05
+
+  # Movement quality (weak positive shaping)
+  knee_bend_reward: 0.01          # Natural leg movement
+  min_bend_threshold: 0.3
+  max_joint_velocity: 3.0         # Higher tolerance (was 2.0)
+  velocity_penalty: 0.01          # REDUCED from 0.02
+
+  # Early stability bonus
+  early_steps_stability_bonus: 0.01
+  early_steps_count: 100
+
+# RL Zoo3 proven SAC hyperparameters for BipedalWalker Hardcore
+# These are the SAME as elite hardcore - only wrapper changes
+agent:
+  type: "sac"
+  hidden_dims: [400, 300]
+  learning_rate: 7.3e-4
+  use_linear_schedule: true       # Linear decay to 0
+  gamma: 0.99
+  tau: 0.01
+  alpha: 0.2
+  automatic_entropy_tuning: true
+  target_entropy: -0.5            # Negative action dim
+
+buffer:
+  capacity: 2000000
+  batch_size: 256
+
+training:
+  total_timesteps: 10000000       # 10M steps
+  learning_starts: 10000
+  train_frequency: 1
+  gradient_steps: 1
+  eval_frequency: 25000
+  eval_episodes: 10
+  save_frequency: 100000
+  log_frequency: 2000
+
+experiment:
+  name: "sac_bridge_optimized_gpu"
+  seed: 99
+  device: "auto"  # Will use MPS on Apple Silicon
+
+paths:
+  checkpoints: "experiments/checkpoints"
+  logs: "experiments/logs"
+
+gpu:
+  num_parallel_envs: 8

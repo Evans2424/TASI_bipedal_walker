@@ -1,0 +1,59 @@
+{
+    "env": {
+        "name": "BipedalWalker-v3",
+        "hardcore": true,
+        "reward_scale": 1.0,
+        "clip_observations": false,
+        "clip_actions": true,
+        "num_eval_envs": 5,
+        "normalize_observations": true,
+        "normalize_rewards": true,
+        "clip_normalized_obs": 10.0,
+        "clip_normalized_reward": 10.0,
+        "use_hardcore_wrapper": true,
+        "frame_skip": 4,
+        "smoothness_coef": 0.2,
+        "hull_angle_coef": 0.1,
+        "hull_angular_vel_coef": 0.05
+    },
+    "agent": {
+        "type": "td3",
+        "hidden_dims": [
+            256,
+            256
+        ],
+        "learning_rate": 0.0003,
+        "gamma": 0.99,
+        "tau": 0.005,
+        "target_noise": 0.2,
+        "noise_clip": 0.5,
+        "policy_update_freq": 2
+    },
+    "buffer": {
+        "capacity": 1000000,
+        "batch_size": 256
+    },
+    "training": {
+        "total_timesteps": 5000000,
+        "learning_starts": 20000,
+        "train_frequency": 1,
+        "gradient_steps": 1,
+        "eval_frequency": 20000,
+        "eval_episodes": 10,
+        "save_frequency": 100000,
+        "log_frequency": 1000
+    },
+    "exploration": {
+        "initial_random_steps": 20000
+    },
+    "experiment": {
+        "name": "td3_hardcore_advanced",
+        "seed": 42,
+        "device": "cpu"
+    },
+    "paths": {
+        "checkpoints": "experiments/checkpoints",
+        "logs": "experiments/logs",
+        "videos": "experiments/videos"
+    }
+}

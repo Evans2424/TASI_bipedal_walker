@@ -1,0 +1,49 @@
+{
+    "env": {
+        "name": "BipedalWalker-v3",
+        "hardcore": false,
+        "reward_scale": 1.0,
+        "clip_observations": false,
+        "clip_actions": true
+    },
+    "agent": {
+        "type": "td3",
+        "hidden_dims": [
+            256,
+            256
+        ],
+        "learning_rate": 0.0003,
+        "gamma": 0.99,
+        "tau": 0.005,
+        "target_noise": 0.2,
+        "noise_clip": 0.5,
+        "policy_update_freq": 2
+    },
+    "buffer": {
+        "capacity": 1000000,
+        "batch_size": 256
+    },
+    "training": {
+        "total_timesteps": 1000000,
+        "learning_starts": 10000,
+        "train_frequency": 1,
+        "gradient_steps": 1,
+        "eval_frequency": 10000,
+        "eval_episodes": 10,
+        "save_frequency": 50000,
+        "log_frequency": 1000
+    },
+    "exploration": {
+        "initial_random_steps": 10000
+    },
+    "experiment": {
+        "name": "td3_bipedal_walker",
+        "seed": 42,
+        "device": "cpu"
+    },
+    "paths": {
+        "checkpoints": "experiments/checkpoints",
+        "logs": "experiments/logs",
+        "videos": "experiments/videos"
+    }
+}
