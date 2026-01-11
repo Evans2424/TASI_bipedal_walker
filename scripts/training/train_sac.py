@@ -14,6 +14,12 @@ Usage:
 
 import os
 import sys
+
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(os.path.dirname(current_dir))
+sys.path.append(root_dir)
+
 import logging
 import argparse
 import yaml
@@ -35,7 +41,8 @@ from stable_baselines3.common.monitor import Monitor
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from wrappers.bridge_balanced_wrapper import BridgeBalancedWrapper
+from src.wrappers.bridge_balanced_wrapper import BridgeBalancedWrapper
+from src.wrappers.hardcore_wrappers import HardcoreWrapper
 
 # Register custom walker environment for bridges mode
 register(
@@ -67,6 +74,7 @@ def make_env(rank: int, seed: int, config: dict):
         env_config = config['env']
         hardcore = env_config.get('hardcore', False)
         use_bridge_wrapper = env_config.get('use_bridge_wrapper', False)
+        use_hardcore_wrapper = env_config.get('use_hardcore_wrapper', False)
         env_name = env_config.get('name', 'BipedalWalker-v3')
         
         # Create environment
@@ -74,12 +82,11 @@ def make_env(rank: int, seed: int, config: dict):
             # Use custom walker with bridges
             env = gym.make("CustomBipedalWalker-v3", hardcore=True)
         else:
-            # Standard BipedalWalker
             env = gym.make(env_name, hardcore=hardcore)
         
         env.reset(seed=seed + rank)
         
-        # Apply wrapper if using bridges mode
+        # Apply wrapper if using bridges or hardcore mode
         if use_bridge_wrapper:
             wrapper_kwargs = {
                 'frame_skip': env_config.get('frame_skip', 4),
@@ -98,6 +105,15 @@ def make_env(rank: int, seed: int, config: dict):
                 'waiting_angle_threshold': env_config.get('waiting_angle_threshold', 0.3),
             }
             env = BridgeBalancedWrapper(env, **wrapper_kwargs)
+
+        elif use_hardcore_wrapper:
+            wrapper_kwargs = {
+                'frame_skip': env_config.get('frame_skip', 4),
+                'smoothness_coef': env_config.get('smoothness_coef', 0.02),
+                'angle_coef': env_config.get('hull_angle_coef', 0.03),
+                'angular_vel_coef': env_config.get('hull_angular_vel_coef', 0.015),
+            }
+            env = HardcoreWrapper(env, **wrapper_kwargs)
         
         env = Monitor(env)
         return env
@@ -135,7 +151,7 @@ def main():
 
         # Parse config
         env_config = config['env']
-        algorithm_config = config['algorithm']
+        algorithm_config = config['agent']
         training_config = config['training']
         checkpoint_config = config['checkpoint']
         experiment_config = config['experiment']

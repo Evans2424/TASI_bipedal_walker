@@ -23,6 +23,7 @@ env:
   clip_normalized_reward: 10.0
 
   # Use bridge wrapper
+  use_hardcore_wrapper: false
   use_bridge_wrapper: true
 
   # Frame skip
@@ -63,7 +64,7 @@ env:
   num_eval_envs: 5
 
 # SAC Algorithm parameters (RL Zoo3 tuned for BipedalWalker)
-algorithm:
+agent:
   learning_rate: 7.3e-4           # RL Zoo3 tuned value
   buffer_size: 2000000
   learning_starts: 10000

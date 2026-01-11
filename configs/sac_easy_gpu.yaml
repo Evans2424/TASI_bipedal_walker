@@ -17,7 +17,7 @@ env:
   frame_skip: 1  # No frame skip for easy mode
 
 # SAC Algorithm parameters (RL Zoo3 tuned for BipedalWalker)
-algorithm:
+agent:
   learning_rate: 7.3e-4           # RL Zoo3 tuned value
   buffer_size: 300000
   learning_starts: 10000
