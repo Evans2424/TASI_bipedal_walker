@@ -11,11 +11,22 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 
 def load_tensorboard_data(log_dir):
     """Load data from TensorBoard event files."""
-    event_files = [f for f in os.listdir(log_dir) if f.startswith('events')]
+    log_path = Path(log_dir)
+    
+    # Find event files in the directory or subdirectories
+    event_files = list(log_path.glob('events.out.tfevents*'))
+    
+    # If no files in root, check subdirectories (common for SAC)
+    if not event_files:
+        for subdir in log_path.iterdir():
+            if subdir.is_dir():
+                event_files.extend(subdir.glob('events.out.tfevents*'))
+    
     if not event_files:
         raise ValueError(f"No TensorBoard event files found in {log_dir}")
     
-    event_file = os.path.join(log_dir, event_files[0])
+    # Use the first event file found
+    event_file = str(event_files[0])
     ea = EventAccumulator(event_file)
     ea.Reload()
     
@@ -157,6 +168,33 @@ def plot_training_analysis(data, save_dir):
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
     print(f"Saved plot to: {plot_path}")
     plt.close()
+    
+    # Create second plot: Training vs Evaluation Rewards only
+    fig2 = plt.figure(figsize=(12, 6))
+    
+    if 'rollout/ep_rew_mean' in data or 'eval/mean_reward' in data:
+        if 'rollout/ep_rew_mean' in data:
+            plt.plot(data['rollout/ep_rew_mean']['steps'], 
+                    data['rollout/ep_rew_mean']['values'], 
+                    linewidth=2, color='#2E86AB', alpha=0.7, label='Training Reward')
+        if 'eval/mean_reward' in data:
+            plt.plot(data['eval/mean_reward']['steps'], 
+                    data['eval/mean_reward']['values'], 
+                    linewidth=2.5, color='#A23B72', marker='o', markersize=5, 
+                    label='Evaluation Reward')
+        
+        plt.axhline(y=300, color='green', linestyle='--', linewidth=2, alpha=0.6, label='Success Threshold (300)')
+        plt.xlabel('Training Steps', fontsize=12)
+        plt.ylabel('Mean Reward', fontsize=12)
+        plt.title('Training vs Evaluation Rewards', fontsize=14, fontweight='bold')
+        plt.legend(fontsize=11, loc='best')
+        plt.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plot_path2 = save_dir / 'reward_comparison.png'
+        plt.savefig(plot_path2, dpi=300, bbox_inches='tight')
+        print(f"Saved reward comparison plot to: {plot_path2}")
+        plt.close()
 
 
 def print_statistics(data):
@@ -214,13 +252,126 @@ def print_statistics(data):
     print("\n" + "="*60)
 
 
+def plot_algorithm_comparison(algorithm='td3', save_dir='plots'):
+    """Create comparison plot for all three environments of a given algorithm."""
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Define experiments based on algorithm
+    if algorithm.lower() == 'td3':
+        experiments = {
+            'TD3 Easy': 'experiments/logs/td3_easy',
+            'TD3 Hardcore': 'experiments/logs/td3_hardcore',
+            'TD3 Hardcore Bridges': 'experiments/logs/td3_hardcore_bridges'
+        }
+        colors = {
+            'TD3 Easy': '#2E86AB',
+            'TD3 Hardcore': '#A23B72',
+            'TD3 Hardcore Bridges': '#F18F01'
+        }
+        title_prefix = 'TD3'
+    elif algorithm.lower() == 'sac':
+        experiments = {
+            'SAC Easy': 'experiments/logs/sac_easy',
+            'SAC Hardcore': 'experiments/logs/sac_hardcore',
+            'SAC Hardcore Bridges': 'experiments/logs/sac_elite_unified_hardcore_gpu_custom_bridges'
+        }
+        colors = {
+            'SAC Easy': '#2E86AB',
+            'SAC Hardcore': '#A23B72',
+            'SAC Hardcore Bridges': '#F18F01'
+        }
+        title_prefix = 'SAC'
+    else:
+        raise ValueError(f"Unknown algorithm: {algorithm}. Use 'td3' or 'sac'.")
+    
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+    
+    # Plot 1: Training Rewards
+    ax1 = axes[0]
+    for name, log_dir in experiments.items():
+        if not Path(log_dir).exists():
+            print(f"⚠️ Warning: {log_dir} not found, skipping...")
+            continue
+        
+        try:
+            data = load_tensorboard_data(log_dir)
+            if 'rollout/ep_rew_mean' in data:
+                steps = data['rollout/ep_rew_mean']['steps']
+                values = data['rollout/ep_rew_mean']['values']
+                ax1.plot(steps, values, linewidth=2, color=colors[name], 
+                        alpha=0.8, label=name)
+        except Exception as e:
+            print(f"⚠️ Error loading {name}: {e}")
+            continue
+    
+    ax1.axhline(y=300, color='green', linestyle='--', linewidth=2, alpha=0.5, label='Success (300)')
+    ax1.set_xlabel('Training Steps', fontsize=12)
+    ax1.set_ylabel('Mean Training Reward', fontsize=12)
+    ax1.set_title(f'{title_prefix} Training Rewards Comparison', fontsize=14, fontweight='bold')
+    ax1.legend(fontsize=10, loc='best')
+    ax1.grid(True, alpha=0.3)
+    
+    # Plot 2: Evaluation Rewards
+    ax2 = axes[1]
+    for name, log_dir in experiments.items():
+        if not Path(log_dir).exists():
+            continue
+        
+        try:
+            data = load_tensorboard_data(log_dir)
+            if 'eval/mean_reward' in data:
+                steps = data['eval/mean_reward']['steps']
+                values = data['eval/mean_reward']['values']
+                ax2.plot(steps, values, linewidth=2.5, color=colors[name], 
+                        marker='o', markersize=4, alpha=0.8, label=name)
+        except Exception as e:
+            continue
+    
+    ax2.axhline(y=300, color='green', linestyle='--', linewidth=2, alpha=0.5, label='Success (300)')
+    ax2.set_xlabel('Training Steps', fontsize=12)
+    ax2.set_ylabel('Mean Evaluation Reward', fontsize=12)
+    ax2.set_title(f'{title_prefix} Evaluation Rewards Comparison', fontsize=14, fontweight='bold')
+    ax2.legend(fontsize=10, loc='best')
+    ax2.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plot_path = save_dir / f'{algorithm.lower()}_environments_comparison.png'
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    print(f"\n📊 {title_prefix} comparison plot saved to: {plot_path}")
+    plt.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description='Analyze TensorBoard training logs')
-    parser.add_argument('--log-dir', type=str, required=True,
+    parser.add_argument('--log-dir', type=str,
                         help='Path to TensorBoard log directory')
     parser.add_argument('--save-dir', type=str, default=None,
                         help='Directory to save plots (default: same as log-dir)')
+    parser.add_argument('--compare-td3', action='store_true',
+                        help='Compare all three TD3 environments (easy, hardcore, bridges)')
+    parser.add_argument('--compare-sac', action='store_true',
+                        help='Compare all three SAC environments (easy, hardcore, bridges)')
     args = parser.parse_args()
+    
+    if args.compare_td3:
+        # Create comparison plot for all TD3 environments
+        print("Creating TD3 environments comparison plot...")
+        save_dir = args.save_dir if args.save_dir else 'plots'
+        plot_algorithm_comparison('td3', save_dir)
+        print(f"\n✅ TD3 comparison complete!")
+        return
+    
+    if args.compare_sac:
+        # Create comparison plot for all SAC environments
+        print("Creating SAC environments comparison plot...")
+        save_dir = args.save_dir if args.save_dir else 'plots'
+        plot_algorithm_comparison('sac', save_dir)
+        print(f"\n✅ SAC comparison complete!")
+        return
+    
+    if not args.log_dir:
+        parser.error("--log-dir is required unless using --compare-td3 or --compare-sac")
     
     # Load data
     print(f"Loading TensorBoard logs from: {args.log_dir}")

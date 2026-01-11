@@ -1,0 +1,12 @@
+Metric,TD3 Easy,TD3 Hardcore,TD3 Hardcore Bridges
+Algorithm,TD3,TD3,TD3
+Environment,BipedalWalker-v3 (Easy),BipedalWalkerHardcore-v3 (Hardcore),CustomBipedalWalker-v3 (Hardcore with Bridges)
+Episodes,1000,1000,1000
+Success Rate (%),0.00,0.00,0.00
+Mean Reward,282.47,234.24,231.98
+Median Reward,295.99,249.41,244.26
+Std Reward,60.39,49.23,42.58
+Min Reward,-125.23,-25.17,-74.20
+Max Reward,299.29,267.35,281.25
+Mean Length,844.64,264.00,420.93
+Std Length,112.73,45.64,77.62
