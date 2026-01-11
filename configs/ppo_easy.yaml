@@ -3,16 +3,12 @@
 # Environment settings
 env:
   name: "BipedalWalker-v3"
-  hardcore: true
+  hardcore: false
   reward_scale: 1.0
   clip_observations: false
   clip_actions: true
   use_hardcore_wrapper: true
   use_bridge_wrapper: false
-
-  smoothness_coef: 0.2  # Penalty for jerky actions
-  hull_angle_coef: 0.1  # Penalty for tilting
-  hull_angular_vel_coef: 0.05  # Penalty for rotation
 
 agent:
   type: "ppo"
@@ -23,11 +19,10 @@ agent:
   n_epochs: 10
   clip_range: 0.2
   n_steps: 128
-  ent_coef: 0.01
   batch_size: 256
 
 training:
-  total_timesteps: 6000000
+  total_timesteps: 2500000
   eval_frequency: 2048  # Evaluate every N steps
   eval_episodes: 10
   save_frequency: 50000  # Save checkpoint every N steps
@@ -35,6 +30,6 @@ training:
   num_envs: 16
 
 experiment:
-  name: "ppo_hardcore"
+  name: "ppo_easy"
   seed: 42
   device: "cuda"
