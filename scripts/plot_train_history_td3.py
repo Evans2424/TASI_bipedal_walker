@@ -9,8 +9,8 @@ from tensorboard.backend.event_processing import event_accumulator
 
 EXPERIMENTS = {
     "Easy": "experiments/logs/td3_easy/",
-    "Hardcore": "experiments/logs/td3_hardcore_advanced/",
-    "Bridges": "experiments/logs/td3_hardcore_advanced_bridges/"
+    "Hardcore": "experiments/logs/td3_hardcore/",
+    "Bridges": "experiments/logs/td3_hardcore_bridges/"
 }
 
 COLORS = {
