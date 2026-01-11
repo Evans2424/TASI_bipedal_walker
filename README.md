@@ -35,8 +35,10 @@ See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for detailed structure document
 ### Installation
 
 ```bash
+# 
+
 # Activate virtual environment
-source bipedal_venv/bin/activate  # or: conda activate TASI_project
+source venv/bin/activate  # or: conda activate TASI_project
 
 # Install dependencies
 pip install -r requirements.txt
@@ -44,18 +46,74 @@ pip install -r requirements.txt
 
 ### Training
 
+#### Training with SAC
+
 ```bash
-# Train SAC (recommended)
-python training/train_sac.py --config configs/sac_bridge_balanced_gpu.yaml
+# Easy mode (no obstacles)
+python scripts/training/train_sac.py --config configs/sac_easy_gpu.yaml
 
-# Train TD3
-python training/train_td3.py --config configs/td3_hardcore.yaml
+# Hardcore mode (stumps, pitfalls, ladders)
+python scripts/training/train_sac.py --config configs/sac_hardcore_gpu.yaml
 
-# Train PPO
-python training/train_ppo.py --config configs/ppo_gpu_optimized.yaml
+# Hardcore with bridges (custom obstacles)
+python scripts/training/train_sac.py --config configs/sac_bridges_gpu.yaml
 ```
 
+#### Training with TD3
+
+```bash
+# Easy mode (no obstacles)
+python scripts/training/train_generic.py --config configs/td3_easy_new.yaml
+
+# Hardcore mode (stumps, pitfalls, ladders)
+python scripts/training/train_generic.py --config configs/td3_hardcore_test.yaml
+
+# Hardcore with bridges (custom obstacles)
+python scripts/training/train_generic.py --config configs/td3_hardcore_advanced_bridges_new.yaml
+```
+
+### Recording Videos
+
+Record videos of trained models:
+
+```bash
+# Record video from any model directory
+python scripts/evaluation/record_sb3_video.py --model-dir experiments/checkpoints/td3_easy --episodes 3
+
+# Record video from hardcore model
+python scripts/evaluation/record_sb3_video.py --model-dir experiments/checkpoints/td3_hardcore --episodes 3
+
+# Record video from bridges model
+python scripts/evaluation/record_sb3_video.py --model-dir experiments/checkpoints/td3_hardcore_bridges --episodes 3
+```
+
+Videos are automatically saved to `experiments/videos/<model_name>/`
+
+### Evaluation
+
+Evaluate trained models with comprehensive metrics:
+
+```bash
+# Evaluate easy mode model (50 episodes by default)
+python scripts/evaluate_sb3_models.py --model-dir experiments/checkpoints/td3_easy
+
+# Evaluate hardcore mode model (1000 episodes for robust statistics)
+python scripts/evaluate_sb3_models.py --model-dir experiments/checkpoints/td3_hardcore --episodes 1000
+
+# Evaluate bridges model
+python scripts/evaluate_sb3_models.py --model-dir experiments/checkpoints/td3_hardcore_bridges --episodes 1000
+```
+
+Results include:
+- Success rate (episodes with reward > 300)
+- Mean, median, min, max rewards
+- Episode length statistics
+- CSV file with detailed per-episode data
+- Distribution plots (reward and episode length)
+
 ### Visualization
+
+**Legacy visualization (for custom agent implementations):**
 
 ```bash
 # Visualize trained model
@@ -67,6 +125,8 @@ python evaluation/visualize.py --record --episodes 5
 # Evaluate performance
 python evaluation/evaluate.py --checkpoint path/to/model.zip
 ```
+
+**Note:** For Stable Baselines3 models, use the `record_sb3_video.py` and `evaluate_sb3_models.py` scripts shown above.
 
 ## 🤖 Implemented Algorithms
 
