@@ -1,42 +1,72 @@
-# Bipedal Walker Reinforcement Learning Project
+# Bipedal Walker Deep Reinforcement Learning
 
-A comprehensive implementation comparing three state-of-the-art reinforcement learning algorithms (SAC, TD3, PPO) for training agents to solve the BipedalWalker environment with custom bridge obstacles.
+**Comparative Analysis of TD3, SAC, and PPO for Bipedal Locomotion**
+
+This project presents a comprehensive empirical comparison of three state-of-the-art deep reinforcement learning algorithms—Twin Delayed Deep Deterministic Policy Gradient (TD3), Soft Actor-Critic (SAC), and Proximal Policy Optimization (PPO)—applied to bipedal locomotion tasks. The study evaluates these algorithms across three environmental variants with increasing difficulty: standard terrain (easy), hardcore mode with obstacles, and hardcore mode with custom bridge obstacles.
 
 ## 🎯 Overview
 
-This project implements and compares reinforcement learning algorithms on a custom BipedalWalker environment featuring bridge obstacles. The primary implementation uses **SAC (Soft Actor-Critic)** with a custom bridge-balanced wrapper that has proven successful in navigation.
+Deep Reinforcement Learning has emerged as a powerful approach for solving continuous control problems like bipedal locomotion, which requires agents to learn stable walking while optimizing multiple objectives: forward progress, energy efficiency, and postural stability.
+
+**Research Contributions:**
+- Systematic comparison of TD3, SAC, and PPO on bipedal walking tasks
+- Evaluation across three terrain variants (easy, hardcore, hardcore+bridges)
+- Performance metrics from comprehensive evaluation framework
+- Training convergence analysis and stability comparison
 
 **Key Features:**
-- **Multiple RL Algorithms**: SAC (primary), TD3, PPO for comprehensive comparison
-- **Custom Environment**: BipedalWalker with bridge obstacles
-- **Intelligent Bridge Detection**: LIDAR-based reward shaping
-- **GPU-Accelerated Training**: CUDA support for faster training
+- **Multiple RL Algorithms**: TD3, SAC, and PPO with Stable Baselines3 implementation
+- **Custom Environment**: BipedalWalker with bridge obstacles requiring sophisticated navigation
+- **Intelligent Wrappers**: HardcoreWrapper and BridgeBalancedWrapper for enhanced learning
+- **GPU-Accelerated Training**: CUDA/MPS support for faster training
 - **Comprehensive Tooling**: Evaluation, visualization, and analysis scripts
-- **Clean Architecture**: Organized codebase with proper separation of concerns
+- **Reproducible Experiments**: Fixed seeds and detailed configuration files
 
 ## 📁 Project Structure
 
 ```
-bipedal_walker/
-├── training/          # Training scripts (train_sac.py, train_td3.py, train_ppo.py)
-├── wrappers/          # Environment wrappers (bridge_balanced_wrapper.py)
-├── evaluation/        # Visualization and evaluation tools
-├── configs/           # YAML configuration files for each algorithm
-├── src/               # Core source code (agents, envs, models, utils)
-├── scripts/           # Utility scripts for analysis
-├── experiments/       # Training outputs (checkpoints, logs, videos)
-└── archived/          # Deprecated implementations (for reference)
+TASI_bipedal_walker/
+├── scripts/
+│   ├── training/
+│   │   ├── train_sac.py              # SAC training script
+│   │   └── train_td3.py          # TD3 training script
+│   ├── evaluation/
+│   │   ├── evaluate_sb3_models.py    # Comprehensive model evaluation
+│   │   ├── record_sb3_video.py       # Video recording from models
+│   │   └── analyze_train_history.py  # Training analysis tool
+│   ├── analyze_tensorboard.py        # TensorBoard log analysis
+│   └── plot_train_history_td3.py     # TD3 training visualization
+├── src/
+│   ├── envs/
+│   │   └── custom_walker.py          # Custom BipedalWalker with bridges
+│   └── wrappers/
+│       ├── bridge_balanced_wrapper.py # Bridge navigation wrapper
+│       └── hardcore_wrappers.py       # Hardcore environment wrapper
+├── configs/
+│   ├── sac_easy_gpu.yaml             # SAC easy mode config
+│   ├── sac_hardcore_gpu.yaml         # SAC hardcore config
+│   ├── sac_bridges_gpu.yaml          # SAC bridges config
+│   ├── td3_easy_new.yaml             # TD3 easy mode config
+│   ├── td3_hardcore_test.yaml        # TD3 hardcore config
+│   └── td3_hardcore_advanced_bridges_new.yaml  # TD3 bridges config
+├── experiments/
+│   ├── checkpoints/                  # Trained model checkpoints
+│   ├── logs/                         # TensorBoard logs
+│   └── videos/                       # Recorded episode videos
+├── report/
+│   ├── report.tex                    # Full research report
+│   └── figures/                      # Report figures and plots
+└── archived/                         # Deprecated implementations (reference only)
 ```
-
-See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for detailed structure documentation.
 
 ## 🚀 Quick Start
 
 ### Installation
 
 ```bash
-# Activate virtual environment
-source bipedal_venv/bin/activate  # or: conda activate TASI_project
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  
 
 # Install dependencies
 pip install -r requirements.txt
@@ -44,108 +74,225 @@ pip install -r requirements.txt
 
 ### Training
 
-```bash
-# Train SAC (recommended)
-python training/train_sac.py --config configs/sac_bridge_balanced_gpu.yaml
+#### TD3 (Twin Delayed DDPG)
 
-# Train TD3
-python training/train_td3.py --config configs/td3_hardcore.yaml
-
-# Train PPO
-python training/train_ppo.py --config configs/ppo_gpu_optimized.yaml
-```
-
-### Visualization
+TD3 addresses DDPG's overestimation bias through three key mechanisms: twin critics, delayed policy updates, and target smoothing.
 
 ```bash
-# Visualize trained model
-python evaluation/visualize.py
+# Easy mode (standard terrain)
+python scripts/training/train_generic.py --config configs/td3_easy_new.yaml
 
-# Record video
-python evaluation/visualize.py --record --episodes 5
+# Hardcore mode (obstacles: stairs, pits, stumps)
+python scripts/training/train_generic.py --config configs/td3_hardcore_test.yaml
 
-# Evaluate performance
-python evaluation/evaluate.py --checkpoint path/to/model.zip
+# Hardcore with bridges (extreme obstacles with dynamic bridges)
+python scripts/training/train_generic.py --config configs/td3_hardcore_advanced_bridges_new.yaml
 ```
 
-## 🤖 Implemented Algorithms
 
-### 1. **SAC (Soft Actor-Critic)** - Primary Implementation
+#### SAC (Soft Actor-Critic)
 
-**Status**: ✅ Working well on bridges
+SAC maximizes entropy-regularized rewards, balancing exploration and exploitation through automatic temperature tuning.
 
-- **Algorithm**: Off-policy, maximum entropy RL
-- **Training**: `training/train_sac.py`
-- **Config**: `configs/sac_bridge_balanced_gpu.yaml`
-- **Wrapper**: `wrappers/bridge_balanced_wrapper.py`
-- **Features**:
-  - LIDAR-based bridge detection
-  - Intelligent reward shaping for bridge navigation
-  - GPU-accelerated training with Stable-Baselines3
-  - Parallel environments for faster sampling
+```bash
+# Easy mode (standard terrain)
+python scripts/training/train_sac.py --config configs/sac_easy_gpu.yaml
 
-### 2. **TD3 (Twin Delayed DDPG)**
+# Hardcore mode (obstacles: stairs, pits, stumps)
+python scripts/training/train_sac.py --config configs/sac_hardcore_gpu.yaml
 
-**Status**: Available for comparison
-
-- **Algorithm**: Off-policy, deterministic policy
-- **Training**: `training/train_td3.py`
-- **Configs**: `configs/td3_hardcore*.yaml`
-- **Features**: Custom implementation with replay buffer
-
-### 3. **PPO (Proximal Policy Optimization)**
-
-**Status**: Available for comparison
-
-- **Algorithm**: On-policy, policy gradient
-- **Training**: `training/train_ppo.py`
-- **Configs**: `configs/ppo_*.yaml`
-- **Features**: Parallel environments, GAE
-
-## 🎮 Environment
-
-### BipedalWalker with Bridge Obstacles
-
-- **Observation Space**: 24-dim continuous (hull state, joint positions, velocities, LIDAR)
-- **Action Space**: 4-dim continuous [-1, 1] (hip and knee motor speeds)
-- **Custom Features**:
-  - Bridge obstacles requiring strategic navigation
-  - LIDAR-based bridge detection (10 rangefinder measurements)
-  - Reward shaping for natural movement and bridge crossing
-  
-### Reward Structure
-
-- **Base Rewards**: Forward progress, staying upright
-- **Bridge Bonuses**: Stable waiting, successful crossing
-- **Penalties**: Falling (-100), excessive motor torque, jerky movements
-- **Success**: 300+ points
-
-## 📊 Configuration
-learning_rate: 3e-4
-gamma: 0.99              # Discount factor
-gae_lambda: 0.95         # GAE parameter
-clip_epsilon: 0.2        # PPO clipping parameter
-value_loss_coef: 0.5     # Value loss coefficient
-entropy_coef: 0.01       # Entropy bonus
-ppo_epochs: 10           # Update epochs per rollout
-mini_batch_size: 64      # Mini-batch size
-rollout_steps: 2048      # Steps before update
+# Hardcore with bridges (extreme obstacles with dynamic bridges)
+python scripts/training/train_sac.py --config configs/sac_bridges_gpu.yaml
 ```
 
-**Training Flow:**
-1. Collect rollout of experiences (2048 steps)
-2. Compute advantages using GAE
-3. Perform multiple epochs of mini-batch updates
-4. Clip policy ratio to prevent large updates
-5. Optimize policy and value function jointly
+**Training Outputs:**
+- Model checkpoints: `experiments/checkpoints/<run_name>/`
+- TensorBoard logs: `experiments/logs/<run_name>/`
+- Best model: `best_model.zip` (automatically saved when reaching best performance)
+- VecNormalize stats: `*_vecnormalize.pkl` (required for evaluation)
 
-### 2. Soft Actor-Critic (SAC)
+### Evaluation
 
-**SAC** is an off-policy algorithm that maximizes both expected return and entropy, encouraging exploration while learning.
+Comprehensive model evaluation with detailed metrics and visualizations:
 
-**Key Components:**
-- **Actor Network**: Stochastic Gaussian policy with reparameterization trick
-- **Twin Critics**: Two Q-networks to mitigate overestimation bias
+```bash
+# TD3 Easy mode (50 episodes by default)
+python scripts/evaluation/evaluate_sb3_models.py --model-dir experiments/checkpoints/td3_easy
+
+# TD3 Hardcore mode (1000 episodes for robust statistics)
+python scripts/evaluation/evaluate_sb3_models.py --model-dir experiments/checkpoints/td3_hardcore --episodes 1000
+
+# TD3 Bridges mode
+python scripts/evaluation/evaluate_sb3_models.py --model-dir experiments/checkpoints/td3_hardcore_bridges --episodes 1000
+
+# SAC Easy mode
+python scripts/evaluation/evaluate_sb3_models.py --model-dir experiments/checkpoints/sac_easy
+
+# SAC Hardcore mode
+python scripts/evaluation/evaluate_sb3_models.py --model-dir experiments/checkpoints/sac_hardcore --episodes 1000
+
+# SAC Bridges mode
+python scripts/evaluation/evaluate_sb3_models.py --model-dir experiments/checkpoints/sac_bridges --episodes 1000
+```
+
+**Evaluation Metrics:**
+- **Performance**: Mean/median/min/max rewards, success rate (reward > 300)
+- **Episode Statistics**: Mean/std/min/max episode lengths
+- **Outputs**: 
+  - CSV file: `<model_dir>/evaluation_results.csv` (per-episode data)
+  - Plots: `<model_dir>/evaluation_plots.png` (reward and length distributions)
+
+### Recording Videos
+
+Record agent performance videos for visualization:
+
+```bash
+# TD3 models
+python scripts/evaluation/record_sb3_video.py --model-dir experiments/checkpoints/td3_easy --episodes 3
+python scripts/evaluation/record_sb3_video.py --model-dir experiments/checkpoints/td3_hardcore --episodes 3
+python scripts/evaluation/record_sb3_video.py --model-dir experiments/checkpoints/td3_hardcore_bridges --episodes 3
+
+# SAC models
+python scripts/evaluation/record_sb3_video.py --model-dir experiments/checkpoints/sac_easy --episodes 3
+python scripts/evaluation/record_sb3_video.py --model-dir experiments/checkpoints/sac_hardcore --episodes 3
+python scripts/evaluation/record_sb3_video.py --model-dir experiments/checkpoints/sac_bridges --episodes 3
+```
+
+Videos are saved to: `experiments/videos/<model_name>/`
+
+### Training Analysis
+
+Analyze TensorBoard logs to visualize training progress:
+
+```bash
+# Analyze TD3 easy training
+python scripts/analyze_tensorboard.py --log-dir experiments/logs/td3_easy
+
+# Analyze SAC hardcore training
+python scripts/analyze_tensorboard.py --log-dir experiments/logs/sac_hardcore
+
+# Compare multiple TD3 runs
+python scripts/plot_train_history_td3.py --output plots/td3_comparison.png
+```
+
+**Analysis Outputs:**
+- Training progress plots (rewards, losses, FPS)
+- Summary statistics (final performance, convergence speed)
+- Saved plot: `<log_dir>/training_analysis.png`
+
+### TensorBoard
+
+View real-time training metrics:
+
+```bash
+tensorboard --logdir experiments/logs/
+```
+
+Navigate to `http://localhost:6006` to view:
+- Episode rewards and lengths
+- Actor/critic losses
+- Learning rate schedule
+- Training FPS
+
+## 🎮 Environment Variants
+
+### BipedalWalker-v3
+
+**State Space (24D):**
+- Hull state: angle, angular velocity (2D)
+- Velocities: horizontal, vertical (2D)
+- Joint states: 4 angles + 4 velocities (8D)
+- Ground contacts: leg-ground contact flags (2D)
+- LIDAR perception: rangefinder measurements (10D)
+
+**Action Space (4D):**
+- Continuous motor torques for hips and knees
+- Normalized to $[-1, 1]$
+
+**Reward Function:**
+$$r_t = 130 \cdot x_{\text{progress}} - 5|\theta| - 0.00035 \sum_i |a_i| - 100 \cdot \mathbb{1}_{\text{fallen}}$$
+
+**Success Criterion:** Mean episode reward ≥ 300
+
+### Environment Modes
+
+1. **Easy (Standard Terrain)**
+   - Flat terrain with minor slopes
+   - Tests basic locomotion skills
+   - ID: `BipedalWalker-v3`
+
+2. **Hardcore**
+   - Obstacles: stairs, pits, stumps, ladders
+   - Tests robustness and adaptability
+   - ID: `BipedalWalkerHardcore-v3`
+
+3. **Hardcore + Bridges**
+   - All hardcore obstacles plus dynamic bridges
+   - Bridges open/close after 3 seconds
+   - Most challenging variant requiring sophisticated navigation
+   - ID: `CustomBipedalWalker-v3` (custom implementation)
+
+## � Custom Wrappers
+
+### HardcoreWrapper
+
+Enhances hardcore environments with smoothness penalties and frame skipping:
+
+**Features:**
+- Frame skip: 4 (reduces action frequency for smoother control)
+- Smoothness penalty: Penalizes jerky movements
+- Angle stability: Penalizes excessive hull angle changes
+- Reward clipping: Prevents extreme reward values
+
+**Location:** [src/wrappers/hardcore_wrappers.py](src/wrappers/hardcore_wrappers.py)
+
+### BridgeBalancedWrapper
+
+Specialized wrapper for bridge navigation with LIDAR-based detection:
+
+**Features:**
+- Bridge detection using LIDAR readings
+- Reward bonuses for stable waiting before bridges
+- Crossing bonuses for successful bridge navigation
+- Smoothness penalties to encourage natural movement
+
+**Location:** [src/wrappers/bridge_balanced_wrapper.py](src/wrappers/bridge_balanced_wrapper.py)
+
+## �📊 Configuration
+All configurations are in YAML format in the [configs/](configs/) directory:
+
+### TD3 Configs
+- `td3_easy_new.yaml` - Standard terrain (1M steps)
+- `td3_hardcore_test.yaml` - Hardcore obstacles (2M steps)
+- `td3_hardcore_advanced_bridges_new.yaml` - Bridges mode (2M steps)
+
+### SAC Configs
+- `sac_easy_gpu.yaml` - Standard terrain (1M steps)
+- `sac_hardcore_gpu.yaml` - Hardcore obstacles (2M steps)
+- `sac_bridges_gpu.yaml` - Bridges mode (2M steps)
+
+
+## 🔗 References
+
+1. Fujimoto, S., Hoof, H., & Meger, D. (2018). **Addressing Function Approximation Error in Actor-Critic Methods**. *ICML 2018* (TD3)
+2. Haarnoja, T., Zhou, A., Abbeel, P., & Levine, S. (2018). **Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor**. *ICML 2018* (SAC)
+3. Schulman, J., Wolski, F., Dhariwal, P., Radford, A., & Klimov, O. (2017). **Proximal Policy Optimization Algorithms**. *arXiv:1707.06347* (PPO)
+4. **OpenAI Gymnasium** - BipedalWalker-v3 Environment Documentation
+5. **Stable Baselines3** - PyTorch implementations of RL algorithms
+
+## 📄 Report
+
+For detailed analysis, methodology, and comprehensive results, see the full research report:
+- [report/report.tex](report/report.tex) - LaTeX source
+- [report/figures/](report/figures/) - Generated plots and figures
+
+---
+
+**Project**: TASI Bipedal Walker - Comparative Analysis of Deep RL Algorithms  
+**Authors**: Helena Alves, José Evans, Mariana Lobão  
+**Date**: December 2025
+
+````
 - **Target Networks**: Soft-updated target critics for stability
 
 All configurations are in YAML format in the `configs/` directory:

@@ -1,52 +1,40 @@
-# PPO Configuration for Hardcore Mode
-# Optimized for: BipedalWalkerHardcore-v3 (obstacles)
-# Best for: After mastering normal mode
-# Expected time: 15-24 hours on CPU
-# Expected result: 200-300+ reward (hardcore is much harder!)
+# PPO Configuration for Bipedal Walker
 
 # Environment settings
 env:
-  name: "BipedalWalkerHardcore-v3"  # HARDCORE mode
+  name: "BipedalWalker-v3"
   hardcore: true
   reward_scale: 1.0
   clip_observations: false
   clip_actions: true
+  use_hardcore_wrapper: true
+  use_bridge_wrapper: false
 
-# Agent settings - More robust for obstacles
+  smoothness_coef: 0.2  # Penalty for jerky actions
+  hull_angle_coef: 0.1  # Penalty for tilting
+  hull_angular_vel_coef: 0.05  # Penalty for rotation
+
 agent:
   type: "ppo"
-  hidden_dims: [400, 300]       # LARGER: More capacity needed
-  learning_rate: 5.0e-5         # LOWER: Harder task needs stability
+  hidden_dims: [256, 256]
+  learning_rate: 3.0e-4
   gamma: 0.99
   gae_lambda: 0.95
-  clip_epsilon: 0.15
-  value_loss_coef: 0.5
-  entropy_coef: 0.02            # Balanced exploration
-  max_grad_norm: 0.5
-  ppo_epochs: 10
-  mini_batch_size: 64
+  n_epochs: 10
+  clip_range: 0.2
+  n_steps: 128
+  ent_coef: 0.01
+  batch_size: 256
 
-# Training settings - Much longer training needed
 training:
-  total_timesteps: 5000000      # MUCH LONGER: Hardcore is difficult
-  rollout_steps: 2048
-  eval_frequency: 10000
+  total_timesteps: 6000000
+  eval_frequency: 2048  # Evaluate every N steps
   eval_episodes: 10
-  save_frequency: 100000        # Less frequent saves
-  log_frequency: 1000
+  save_frequency: 50000  # Save checkpoint every N steps
+  log_frequency: 1000  # Log metrics every N steps
+  num_envs: 16
 
-# Experiment settings
 experiment:
   name: "ppo_hardcore"
   seed: 42
-  device: "cpu"
-  num_envs: 1
-
-# Paths
-paths:
-  checkpoints: "experiments/checkpoints"
-  logs: "experiments/logs"
-  videos: "experiments/videos"
-
-# Note: Consider transfer learning from a normal mode checkpoint!
-# Load a pre-trained model and fine-tune on hardcore.
+  device: "cuda"

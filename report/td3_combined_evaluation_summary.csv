@@ -1,0 +1,8 @@
+Metric,TD3 Easy,TD3 Hardcore,TD3 Hardcore Bridges
+Episodes Eval,1000,1000,1000
+Mean Reward,282.47,234.24,231.98
+Median Reward,295.99,249.41,244.26
+Std Reward,60.39,49.23,42.58
+Min Reward,-125.23,-25.17,-74.20
+Max Reward,299.29,267.35,281.25
+Mean Length,844.64,264.00,420.93

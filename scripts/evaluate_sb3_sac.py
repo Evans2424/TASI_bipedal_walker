@@ -14,8 +14,8 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent))
 
 # Import wrappers
-from wrappers.elite_hardcore_wrapper import EliteHardcoreWrapper
-from wrappers.bridge_balanced_wrapper import BridgeBalancedWrapper
+from src.wrappers.elite_hardcore_wrapper import EliteHardcoreWrapper
+from src.wrappers.bridge_balanced_wrapper import BridgeBalancedWrapper
 
 # Register custom walker for bridges mode
 from gymnasium.envs.registration import register

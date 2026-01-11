@@ -66,7 +66,7 @@ agent:
   tau: 0.01  # Target network update rate
   alpha: 0.2  # Initial entropy coefficient
   automatic_entropy_tuning: true  # Let SAC adapt entropy
-  target_entropy: -0.5  # Lower than -action_dim for more focused policy
+  target_entropy: -4  # Lower than -action_dim for more focused policy
 
 # Replay buffer settings
 buffer:

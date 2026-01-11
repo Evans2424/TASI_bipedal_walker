@@ -1,0 +1,135 @@
+{
+    "policy_class": {
+        ":type:": "<class 'abc.ABCMeta'>",
+        ":serialized:": "gAWVMAAAAAAAAACMHnN0YWJsZV9iYXNlbGluZXMzLnNhYy5wb2xpY2llc5SMCVNBQ1BvbGljeZSTlC4=",
+        "__module__": "stable_baselines3.sac.policies",
+        "__annotations__": "{'actor': <class 'stable_baselines3.sac.policies.Actor'>, 'critic': <class 'stable_baselines3.common.policies.ContinuousCritic'>, 'critic_target': <class 'stable_baselines3.common.policies.ContinuousCritic'>}",
+        "__doc__": "\n    Policy class (with both actor and critic) for SAC.\n\n    :param observation_space: Observation space\n    :param action_space: Action space\n    :param lr_schedule: Learning rate schedule (could be constant)\n    :param net_arch: The specification of the policy and value networks.\n    :param activation_fn: Activation function\n    :param use_sde: Whether to use State Dependent Exploration or not\n    :param log_std_init: Initial value for the log standard deviation\n    :param use_expln: Use ``expln()`` function instead of ``exp()`` when using gSDE to ensure\n        a positive standard deviation (cf paper). It allows to keep variance\n        above zero and prevent it from growing too fast. In practice, ``exp()`` is usually enough.\n    :param clip_mean: Clip the mean output when using gSDE to avoid numerical instability.\n    :param features_extractor_class: Features extractor to use.\n    :param features_extractor_kwargs: Keyword arguments\n        to pass to the features extractor.\n    :param normalize_images: Whether to normalize images or not,\n         dividing by 255.0 (True by default)\n    :param optimizer_class: The optimizer to use,\n        ``th.optim.Adam`` by default\n    :param optimizer_kwargs: Additional keyword arguments,\n        excluding the learning rate, to pass to the optimizer\n    :param n_critics: Number of critic networks to create.\n    :param share_features_extractor: Whether to share or not the features extractor\n        between the actor and the critic (this saves computation time)\n    ",
+        "__init__": "<function SACPolicy.__init__ at 0x11dbc30a0>",
+        "_build": "<function SACPolicy._build at 0x11dbc3130>",
+        "_get_constructor_parameters": "<function SACPolicy._get_constructor_parameters at 0x11dbc31c0>",
+        "reset_noise": "<function SACPolicy.reset_noise at 0x11dbc3250>",
+        "make_actor": "<function SACPolicy.make_actor at 0x11dbc32e0>",
+        "make_critic": "<function SACPolicy.make_critic at 0x11dbc3370>",
+        "forward": "<function SACPolicy.forward at 0x11dbc3400>",
+        "_predict": "<function SACPolicy._predict at 0x11dbc3490>",
+        "set_training_mode": "<function SACPolicy.set_training_mode at 0x11dbc3520>",
+        "__abstractmethods__": "frozenset()",
+        "_abc_impl": "<_abc._abc_data object at 0x11dbdab80>"
+    },
+    "verbose": 1,
+    "policy_kwargs": {
+        "net_arch": [
+            400,
+            300
+        ],
+        "use_sde": false
+    },
+    "num_timesteps": 8875000,
+    "_total_timesteps": 10000000,
+    "_num_timesteps_at_start": 0,
+    "seed": 99,
+    "action_noise": null,
+    "start_time": 1767897950542106000,
+    "learning_rate": {
+        ":type:": "<class 'function'>",
+        ":serialized:": "gAWVUwMAAAAAAACMF2Nsb3VkcGlja2xlLmNsb3VkcGlja2xllIwOX21ha2VfZnVuY3Rpb26Uk5QoaACMDV9idWlsdGluX3R5cGWUk5SMCENvZGVUeXBllIWUUpQoSwFLAEsASwFLAksTQwh8AIgAFABTAJSM2AogICAgICAgIFByb2dyZXNzIHdpbGwgZGVjcmVhc2UgZnJvbSAxIChiZWdpbm5pbmcpIHRvIDAgKGVuZCkuCgogICAgICAgIEFyZ3M6CiAgICAgICAgICAgIHByb2dyZXNzX3JlbWFpbmluZzogUmVtYWluaW5nIHByb2dyZXNzICgxLjAgYXQgc3RhcnQsIDAuMCBhdCBlbmQpCgogICAgICAgIFJldHVybnM6CiAgICAgICAgICAgIEN1cnJlbnQgbGVhcm5pbmcgcmF0ZQogICAgICAgIJSFlCmMEnByb2dyZXNzX3JlbWFpbmluZ5SFlIxHL1VzZXJzL2pvc2VwZWRyb2V2YW5zL0Rlc2t0b3AvTUVDRC9UQVNJL2JpcGVkYWxfd2Fsa2VyL3RyYWluX3NiM19ncHUucHmUjARmdW5jlEs7QwIICpSMDWluaXRpYWxfdmFsdWWUhZQpdJRSlH2UKIwLX19wYWNrYWdlX1+UTowIX19uYW1lX1+UjAhfX21haW5fX5SMCF9fZmlsZV9flGgNdU5OaACMEF9tYWtlX2VtcHR5X2NlbGyUk5QpUpSFlHSUUpRoAIwSX2Z1bmN0aW9uX3NldHN0YXRllJOUaB59lH2UKGgWjARmdW5jlIwMX19xdWFsbmFtZV9flIwdbGluZWFyX3NjaGVkdWxlLjxsb2NhbHM+LmZ1bmOUjA9fX2Fubm90YXRpb25zX1+UfZQoaAuMCGJ1aWx0aW5zlIwFZmxvYXSUk5SMBnJldHVybpRoKnWMDl9fa3dkZWZhdWx0c19flE6MDF9fZGVmYXVsdHNfX5ROjApfX21vZHVsZV9flGgXjAdfX2RvY19flGgJjAtfX2Nsb3N1cmVfX5RoAIwKX21ha2VfY2VsbJSTlEc/R+uvECNjsoWUUpSFlIwXX2Nsb3VkcGlja2xlX3N1Ym1vZHVsZXOUXZSMC19fZ2xvYmFsc19flH2UdYaUhlIwLg=="
+    },
+    "tensorboard_log": "experiments/logs",
+    "_last_obs": {
+        ":type:": "<class 'numpy.ndarray'>",
+        ":serialized:": "gAWVdgMAAAAAAACME251bXB5Ll9jb3JlLm51bWVyaWOUjAtfZnJvbWJ1ZmZlcpSTlCiWAAMAAAAAAABzWLG/WvBEP19Jyz7mHe48JVs2PZHynr/qjk2+E+vEPZnUS7/8qLE/5ojqPDavab+k8oE9ZMdTvxbsqb4teaG+WZajvofttL4XO7y+PNrDvoL4w75lfRu+EOogPxEOhz4w6wy/XR8kv0QtIj8ekvs7drM/v9SZTT88elo+kmK/v5nUS7+Zdqs/5ojqPCJLaL+I8oE9ZMdTv+3IoT7sD/g+uqcrP8stTD8c5FE/1NdpQHy5qj+odoI/EOogPxEOhz6KocQ/SLGcPl21AT9CzLw7nk8yvlGCXr/fQgy/iyTEPdTCoD/nF/w9S3OdP6zTab9d8oE9ZMdTvzADz763V+G+FXzgvil+375DaVZA7AOOPwhIu75Q83W+PBCPPREOhz76rTY/seGLvyj+RD84lZc+Bu2Gv5z2pD80XLU+kmK/v5nUS78s3aU/nDfovoXqVL9+8oE9ZMdTv/J2cL3fpoK9h5DMvXXCt73vjpy9Qm0VQA8A4j601vU9EOogPxEOhz5GNvs+tosVPk9JFT6bO+w/sKEDP3D6pD/1MlK/8bu+PpnUS7/6P6m+1CSWv4OHBz/D9o4/OLqaPzEM4D39jSq+5I5AvgYMur5B9gy/mSciv98OAr9/2Ve+EOogPxEOhz7qMKM+yS14P8R/yrshOCA/mU8pP5Dynr8Wz1+/jb5mPZnUS7+Ng0e/xk6pPglNgj+WdLy/ZMdTv7C6Xj+kfXE/xomHvwqEib8P+Ii/cp1uP+usNj8lXmY/EOogPxEOhz60LQe/ufDQPE5Kij/dhzc+0FWBvnv3nr8QzPu9OXtaP9TCoD9oUUQ/F3eFP6bSab8F8YE9ZMdTv86Z/z5unQ0/RUkYP/sxID8rY8o/ZA2zP5pymT/hd/y9EOogPxEOhz565Je/tQ2PPRgO1r7mexy/0GhRPyDv1r6CcF6/jb5mPZnUS78GDRo+SHOdP1urEL+SdLy/ZMdTv6VTcb4qg16+FptTvm34Sr7zYj6+Fv0uvn4kHb4tI4S/EOogPxEOhz6UjAVudW1weZSMBWR0eXBllJOUjAJmNJSJiIeUUpQoSwOMATyUTk5OSv////9K/////0sAdJRiSwhLGIaUjAFDlHSUUpQu"
+    },
+    "_last_episode_starts": {
+        ":type:": "<class 'numpy.ndarray'>",
+        ":serialized:": "gAWVfAAAAAAAAACME251bXB5Ll9jb3JlLm51bWVyaWOUjAtfZnJvbWJ1ZmZlcpSTlCiWCAAAAAAAAAABAQEBAQEBAZSMBW51bXB5lIwFZHR5cGWUk5SMAmIxlImIh5RSlChLA4wBfJROTk5K/////0r/////SwB0lGJLCIWUjAFDlHSUUpQu"
+    },
+    "_last_original_obs": {
+        ":type:": "<class 'numpy.ndarray'>",
+        ":serialized:": "gAWVdgMAAAAAAACME251bXB5Ll9jb3JlLm51bWVyaWOUjAtfZnJvbWJ1ZmZlcpSTlCiWAAMAAAAAAAAOo4e+5Er4PLEi/T5Wx427OpnwPgEAgL/gBZ2+6zvSPAAAAAAoipA/AAAAAGR5Ir+rqko0AAAAAK3fwz7LOcY+iqvMPpdO1z7in+k+EK8CPzt3GD84nEI/AACAPwAAgD9TtMe9EbHhvCTCBz8mV8i7ei7QvIy9HT8gN969AACAvwAAAAAtCo0/AAAAAPDYIb9VVVUzAAAAAPec4j7p1eo+4MD5Ps+yBj/t+hI/t5F6P5wKWj/gzHM/AACAPwAAgD8vQKQ+Nzg5PCzUAj/Ulc27x7OqPs+cNL+0FvK+FTzQPAAAgD+DY9Q+AQCAP9KJIr+rqiq0AAAAAMNvwD4phMA+/kDHPmZm0z54QlM/zv8uPzUdGT9N5j4/zVptPwAAgD9Box8+6b88vVsLDT9zTZM8dzJdvgYAgD+gTCi9AACAvwAAAACW4Ik/MnvNvqAdGb8AAAAAAAAAAMLV0D6WvdE+x6vWPomy4z5ma/g+gmRTP1nzNz/EB04/AACAPwAAgD/3veM92VubO6Ca6T5Q/BY+L15DPw0DgD8GhBq/kK9QPgAAAACPZyI+2ASAv4B5eTx5mi8/AACAP6bP2D6FCc0+DajSPk3W1j60U+A+v3b2PvutEz9jIkA/AACAPwAAgD+2KJ09a8cdPXHK3T6ahDo9ouRaPwAAgL98ByG/AAAAAAAAAACXTMK9ALiAPmgHcT4BAIC/AAAAALrm/D771f8+JQCrPqdstT5078U+47opPxpZQj9HyW4/AACAPwAAgD+Zf769SIBVub4gGT/7qwY8r52RPuMDgL/89Ym+joUDPwAAgD+jRkc/shJYP1yJIr9VVfW1AAAAAJ5O6z63+u0+3k72PkipAj/BUSY/7Jc3P5TiVD9uz0M/AACAPwAAgD/wc2a+t8HTOpvFvT5N3Wy9v+1zP1Nhs760XyC/AAAAAAAAAAAJTNw+/f9/P9C59L79/3+/AAAAAEZwyD4At8o+Nc/RPlWZ3j5p2/I+RfgIP7E5IT+CoB0/AACAPwAAgD+UjAVudW1weZSMBWR0eXBllJOUjAJmNJSJiIeUUpQoSwOMATyUTk5OSv////9K/////0sAdJRiSwhLGIaUjAFDlHSUUpQu"
+    },
+    "_episode_num": 54952,
+    "use_sde": false,
+    "sde_sample_freq": -1,
+    "_current_progress_remaining": 0.11250079999999996,
+    "_stats_window_size": 100,
+    "ep_info_buffer": {
+        ":type:": "<class 'collections.deque'>",
+        ":serialized:": "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"
+    },
+    "ep_success_buffer": {
+        ":type:": "<class 'collections.deque'>",
+        ":serialized:": "gAWVIAAAAAAAAACMC2NvbGxlY3Rpb25zlIwFZGVxdWWUk5QpS2SGlFKULg=="
+    },
+    "_n_updates": 1108124,
+    "observation_space": {
+        ":type:": "<class 'gymnasium.spaces.box.Box'>",
+        ":serialized:": "gAWVTQQAAAAAAACMFGd5bW5hc2l1bS5zcGFjZXMuYm94lIwDQm94lJOUKYGUfZQojAVkdHlwZZSMBW51bXB5lIwFZHR5cGWUk5SMAmY0lImIh5RSlChLA4wBPJROTk5K/////0r/////SwB0lGKMBl9zaGFwZZRLGIWUjANsb3eUjBNudW1weS5fY29yZS5udW1lcmljlIwLX2Zyb21idWZmZXKUk5QolmAAAAAAAAAA2w9JwAAAoMAAAKDAAACgwNsPScAAAKDA2w9JwAAAoMAAAACA2w9JwAAAoMDbD0nAAACgwAAAAIAAAIC/AACAvwAAgL8AAIC/AACAvwAAgL8AAIC/AACAvwAAgL8AAIC/lGgLSxiFlIwBQ5R0lFKUjA1ib3VuZGVkX2JlbG93lGgTKJYYAAAAAAAAAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAZRoCIwCYjGUiYiHlFKUKEsDjAF8lE5OTkr/////Sv////9LAHSUYksYhZRoFnSUUpSMBGhpZ2iUaBMolmAAAAAAAAAA2w9JQAAAoEAAAKBAAACgQNsPSUAAAKBA2w9JQAAAoEAAAKBA2w9JQAAAoEDbD0lAAACgQAAAoEAAAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/lGgLSxiFlGgWdJRSlIwNYm91bmRlZF9hYm92ZZRoEyiWGAAAAAAAAAABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQGUaB1LGIWUaBZ0lFKUjAhsb3dfcmVwcpSM/lstMy4xNDE1OTI3IC01LiAgICAgICAgLTUuICAgICAgICAtNS4gICAgICAgIC0zLjE0MTU5MjcgLTUuCiAtMy4xNDE1OTI3IC01LiAgICAgICAgLTAuICAgICAgICAtMy4xNDE1OTI3IC01LiAgICAgICAgLTMuMTQxNTkyNwogLTUuICAgICAgICAtMC4gICAgICAgIC0xLiAgICAgICAgLTEuICAgICAgICAtMS4gICAgICAgIC0xLgogLTEuICAgICAgICAtMS4gICAgICAgIC0xLiAgICAgICAgLTEuICAgICAgICAtMS4gICAgICAgIC0xLiAgICAgICBdlIwJaGlnaF9yZXBylIzmWzMuMTQxNTkyNyA1LiAgICAgICAgNS4gICAgICAgIDUuICAgICAgICAzLjE0MTU5MjcgNS4gICAgICAgIDMuMTQxNTkyNwogNS4gICAgICAgIDUuICAgICAgICAzLjE0MTU5MjcgNS4gICAgICAgIDMuMTQxNTkyNyA1LiAgICAgICAgNS4KIDEuICAgICAgICAxLiAgICAgICAgMS4gICAgICAgIDEuICAgICAgICAxLiAgICAgICAgMS4gICAgICAgIDEuCiAxLiAgICAgICAgMS4gICAgICAgIDEuICAgICAgIF2UjApfbnBfcmFuZG9tlE51Yi4=",
+        "dtype": "float32",
+        "_shape": [
+            24
+        ],
+        "low": "[-3.1415927 -5.        -5.        -5.        -3.1415927 -5.\n -3.1415927 -5.        -0.        -3.1415927 -5.        -3.1415927\n -5.        -0.        -1.        -1.        -1.        -1.\n -1.        -1.        -1.        -1.        -1.        -1.       ]",
+        "bounded_below": "[ True  True  True  True  True  True  True  True  True  True  True  True\n  True  True  True  True  True  True  True  True  True  True  True  True]",
+        "high": "[3.1415927 5.        5.        5.        3.1415927 5.        3.1415927\n 5.        5.        3.1415927 5.        3.1415927 5.        5.\n 1.        1.        1.        1.        1.        1.        1.\n 1.        1.        1.       ]",
+        "bounded_above": "[ True  True  True  True  True  True  True  True  True  True  True  True\n  True  True  True  True  True  True  True  True  True  True  True  True]",
+        "low_repr": "[-3.1415927 -5.        -5.        -5.        -3.1415927 -5.\n -3.1415927 -5.        -0.        -3.1415927 -5.        -3.1415927\n -5.        -0.        -1.        -1.        -1.        -1.\n -1.        -1.        -1.        -1.        -1.        -1.       ]",
+        "high_repr": "[3.1415927 5.        5.        5.        3.1415927 5.        3.1415927\n 5.        5.        3.1415927 5.        3.1415927 5.        5.\n 1.        1.        1.        1.        1.        1.        1.\n 1.        1.        1.       ]",
+        "_np_random": null
+    },
+    "action_space": {
+        ":type:": "<class 'gymnasium.spaces.box.Box'>",
+        ":serialized:": "gAWVOgMAAAAAAACMFGd5bW5hc2l1bS5zcGFjZXMuYm94lIwDQm94lJOUKYGUfZQojAVkdHlwZZSMBW51bXB5lIwFZHR5cGWUk5SMAmY0lImIh5RSlChLA4wBPJROTk5K/////0r/////SwB0lGKMBl9zaGFwZZRLBIWUjANsb3eUjBNudW1weS5fY29yZS5udW1lcmljlIwLX2Zyb21idWZmZXKUk5QolhAAAAAAAAAAAACAvwAAgL8AAIC/AACAv5RoC0sEhZSMAUOUdJRSlIwNYm91bmRlZF9iZWxvd5RoEyiWBAAAAAAAAAABAQEBlGgIjAJiMZSJiIeUUpQoSwOMAXyUTk5OSv////9K/////0sAdJRiSwSFlGgWdJRSlIwEaGlnaJRoEyiWEAAAAAAAAAAAAIA/AACAPwAAgD8AAIA/lGgLSwSFlGgWdJRSlIwNYm91bmRlZF9hYm92ZZRoEyiWBAAAAAAAAAABAQEBlGgdSwSFlGgWdJRSlIwIbG93X3JlcHKUjAQtMS4wlIwJaGlnaF9yZXBylIwDMS4wlIwKX25wX3JhbmRvbZSMFG51bXB5LnJhbmRvbS5fcGlja2xllIwQX19nZW5lcmF0b3JfY3RvcpSTlGgyjBRfX2JpdF9nZW5lcmF0b3JfY3RvcpSTlIwTbnVtcHkucmFuZG9tLl9wY2c2NJSMBVBDRzY0lJOUhZRSlH2UKIwNYml0X2dlbmVyYXRvcpSMBVBDRzY0lIwFc3RhdGWUfZQoaD+KEKzs+u8VSR2HYVFZr8nXVkCMA2luY5SKET3UnggbLpv1VKXyB5qKGPQAdYwKaGFzX3VpbnQzMpRLAIwIdWludGVnZXKUSwB1jBpudW1weS5yYW5kb20uYml0X2dlbmVyYXRvcpSMG19fcHl4X3VucGlja2xlX1NlZWRTZXF1ZW5jZZSTlGhEjAxTZWVkU2VxdWVuY2WUk5RKIqLqA06HlFKUKEtjSwBoEyiWEAAAAAAAAAC2mpcytAeo+XTAkSgR/jt8lGgIjAJ1NJSJiIeUUpQoSwNoDE5OTkr/////Sv////9LAHSUYksEhZRoFnSUUpRLBCl0lGKGlGKFlFKUdWIu",
+        "dtype": "float32",
+        "_shape": [
+            4
+        ],
+        "low": "[-1. -1. -1. -1.]",
+        "bounded_below": "[ True  True  True  True]",
+        "high": "[1. 1. 1. 1.]",
+        "bounded_above": "[ True  True  True  True]",
+        "low_repr": "-1.0",
+        "high_repr": "1.0",
+        "_np_random": "Generator(PCG64)"
+    },
+    "n_envs": 8,
+    "buffer_size": 2000000,
+    "batch_size": 256,
+    "learning_starts": 10000,
+    "tau": 0.01,
+    "gamma": 0.99,
+    "gradient_steps": 1,
+    "optimize_memory_usage": false,
+    "replay_buffer_class": {
+        ":type:": "<class 'abc.ABCMeta'>",
+        ":serialized:": "gAWVNQAAAAAAAACMIHN0YWJsZV9iYXNlbGluZXMzLmNvbW1vbi5idWZmZXJzlIwMUmVwbGF5QnVmZmVylJOULg==",
+        "__module__": "stable_baselines3.common.buffers",
+        "__annotations__": "{'observations': <class 'numpy.ndarray'>, 'next_observations': <class 'numpy.ndarray'>, 'actions': <class 'numpy.ndarray'>, 'rewards': <class 'numpy.ndarray'>, 'dones': <class 'numpy.ndarray'>, 'timeouts': <class 'numpy.ndarray'>}",
+        "__doc__": "\n    Replay buffer used in off-policy algorithms like SAC/TD3.\n\n    :param buffer_size: Max number of element in the buffer\n    :param observation_space: Observation space\n    :param action_space: Action space\n    :param device: PyTorch device\n    :param n_envs: Number of parallel environments\n    :param optimize_memory_usage: Enable a memory efficient variant\n        of the replay buffer which reduces by almost a factor two the memory used,\n        at a cost of more complexity.\n        See https://github.com/DLR-RM/stable-baselines3/issues/37#issuecomment-637501195\n        and https://github.com/DLR-RM/stable-baselines3/pull/28#issuecomment-637559274\n        Cannot be used in combination with handle_timeout_termination.\n    :param handle_timeout_termination: Handle timeout termination (due to timelimit)\n        separately and treat the task as infinite horizon task.\n        https://github.com/DLR-RM/stable-baselines3/issues/284\n    ",
+        "__init__": "<function ReplayBuffer.__init__ at 0x109fc1ab0>",
+        "add": "<function ReplayBuffer.add at 0x109fc1b40>",
+        "sample": "<function ReplayBuffer.sample at 0x109fc1bd0>",
+        "_get_samples": "<function ReplayBuffer._get_samples at 0x109fc1c60>",
+        "_maybe_cast_dtype": "<staticmethod(<function ReplayBuffer._maybe_cast_dtype at 0x109fc1cf0>)>",
+        "__abstractmethods__": "frozenset()",
+        "_abc_impl": "<_abc._abc_data object at 0x109f57e40>",
+        "__slotnames__": []
+    },
+    "replay_buffer_kwargs": {},
+    "n_steps": 1,
+    "train_freq": {
+        ":type:": "<class 'stable_baselines3.common.type_aliases.TrainFreq'>",
+        ":serialized:": "gAWVYQAAAAAAAACMJXN0YWJsZV9iYXNlbGluZXMzLmNvbW1vbi50eXBlX2FsaWFzZXOUjAlUcmFpbkZyZXGUk5RLAWgAjBJUcmFpbkZyZXF1ZW5jeVVuaXSUk5SMBHN0ZXCUhZRSlIaUgZQu"
+    },
+    "use_sde_at_warmup": false,
+    "target_entropy": -0.5,
+    "ent_coef": "auto",
+    "target_update_interval": 1,
+    "lr_schedule": {
+        ":type:": "<class 'stable_baselines3.common.utils.FloatSchedule'>",
+        ":serialized:": "gAWVngMAAAAAAACMHnN0YWJsZV9iYXNlbGluZXMzLmNvbW1vbi51dGlsc5SMDUZsb2F0U2NoZWR1bGWUk5QpgZR9lIwOdmFsdWVfc2NoZWR1bGWUjBdjbG91ZHBpY2tsZS5jbG91ZHBpY2tsZZSMDl9tYWtlX2Z1bmN0aW9ulJOUKGgGjA1fYnVpbHRpbl90eXBllJOUjAhDb2RlVHlwZZSFlFKUKEsBSwBLAEsBSwJLE0MIfACIABQAUwCUjNgKICAgICAgICBQcm9ncmVzcyB3aWxsIGRlY3JlYXNlIGZyb20gMSAoYmVnaW5uaW5nKSB0byAwIChlbmQpLgoKICAgICAgICBBcmdzOgogICAgICAgICAgICBwcm9ncmVzc19yZW1haW5pbmc6IFJlbWFpbmluZyBwcm9ncmVzcyAoMS4wIGF0IHN0YXJ0LCAwLjAgYXQgZW5kKQoKICAgICAgICBSZXR1cm5zOgogICAgICAgICAgICBDdXJyZW50IGxlYXJuaW5nIHJhdGUKICAgICAgICCUhZQpjBJwcm9ncmVzc19yZW1haW5pbmeUhZSMRy9Vc2Vycy9qb3NlcGVkcm9ldmFucy9EZXNrdG9wL01FQ0QvVEFTSS9iaXBlZGFsX3dhbGtlci90cmFpbl9zYjNfZ3B1LnB5lIwEZnVuY5RLO0MCCAqUjA1pbml0aWFsX3ZhbHVllIWUKXSUUpR9lCiMC19fcGFja2FnZV9flE6MCF9fbmFtZV9flIwIX19tYWluX1+UjAhfX2ZpbGVfX5RoE3VOTmgGjBBfbWFrZV9lbXB0eV9jZWxslJOUKVKUhZR0lFKUaAaMEl9mdW5jdGlvbl9zZXRzdGF0ZZSTlGgkfZR9lChoHIwEZnVuY5SMDF9fcXVhbG5hbWVfX5SMHWxpbmVhcl9zY2hlZHVsZS48bG9jYWxzPi5mdW5jlIwPX19hbm5vdGF0aW9uc19flH2UKGgRjAhidWlsdGluc5SMBWZsb2F0lJOUjAZyZXR1cm6UaDB1jA5fX2t3ZGVmYXVsdHNfX5ROjAxfX2RlZmF1bHRzX1+UTowKX19tb2R1bGVfX5RoHYwHX19kb2NfX5RoD4wLX19jbG9zdXJlX1+UaAaMCl9tYWtlX2NlbGyUk5RHP0frrxAjY7KFlFKUhZSMF19jbG91ZHBpY2tsZV9zdWJtb2R1bGVzlF2UjAtfX2dsb2JhbHNfX5R9lHWGlIZSMHNiLg==",
+        "value_schedule": "<function linear_schedule.<locals>.func at 0x11dbed090>"
+    },
+    "batch_norm_stats": [],
+    "batch_norm_stats_target": []
+}

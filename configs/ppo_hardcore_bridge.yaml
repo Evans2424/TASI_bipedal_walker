@@ -1,0 +1,59 @@
+# PPO Configuration for Bipedal Walker
+
+# Environment settings
+env:
+  name: "CustomBipedalWalker-v3"
+  hardcore: true
+  reward_scale: 1.0
+  clip_observations: false
+  clip_actions: true
+  use_hardcore_wrapper: false
+  use_bridge_wrapper: true
+
+  smoothness_coef: 0.02             # Soft (between 0.01-0.03)
+  hull_angle_coef: 0.03             # Soft (between 0.02-0.04)
+  hull_angular_vel_coef: 0.015      # Soft (between 0.01-0.02)
+
+  # Movement quality
+  knee_bend_reward: 0.02
+  min_bend_threshold: 0.3
+
+  # MODERATE bridge shaping (SIMPLE - just 2 bonuses)
+  stable_waiting_bonus: 0.02        # +0.02/step (300 steps = +6.0 total)
+  bridge_cross_bonus: 8.0           # +8.0 for crossing
+  # NO detect_bonus, NO stop_bonus, NO velocity_bonus
+
+  # Anti-exploit (stricter)
+  min_progress_for_bonuses: 15.0
+  max_waiting_steps: 400
+
+  # Detection (STRICT - avoid false positives)
+  lidar_bridge_threshold: 0.5       # Stricter (was 1.0)
+  min_close_beams: 3                # Need 3+ beams (wide obstacle)
+  waiting_velocity_threshold: 0.15
+  waiting_angle_threshold: 0.3
+
+agent:
+  type: "ppo"
+  hidden_dims: [256, 256]
+  learning_rate: 3.0e-4
+  gamma: 0.99
+  gae_lambda: 0.95
+  n_epochs: 10
+  clip_range: 0.2
+  n_steps: 128
+  ent_coef: 0.01
+  batch_size: 256
+
+training:
+  total_timesteps: 6000000
+  eval_frequency: 2048  # Evaluate every N steps
+  eval_episodes: 10
+  save_frequency: 50000  # Save checkpoint every N steps
+  log_frequency: 1000  # Log metrics every N steps
+  num_envs: 16
+
+experiment:
+  name: "ppo_hardcore"
+  seed: 42
+  device: "cuda"
