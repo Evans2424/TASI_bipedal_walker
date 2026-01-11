@@ -47,121 +47,52 @@ def plot_training_analysis(data, save_dir):
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
     
-    # Create figure with subplots
-    fig = plt.figure(figsize=(16, 10))
+    # Create figure with subplots (2x2 grid)
+    fig = plt.figure(figsize=(14, 10))
     
-    # 1. Episode Rewards
-    ax1 = plt.subplot(3, 3, 1)
-    if 'rollout/ep_rew_mean' in data:
-        steps = data['rollout/ep_rew_mean']['steps']
-        values = data['rollout/ep_rew_mean']['values']
-        ax1.plot(steps, values, linewidth=2, color='#2E86AB')
-        ax1.set_xlabel('Training Steps')
-        ax1.set_ylabel('Mean Episode Reward')
-        ax1.set_title('Training Progress: Episode Rewards')
-        ax1.grid(True, alpha=0.3)
-        
-        # Add horizontal line at 300 (success threshold)
-        ax1.axhline(y=300, color='green', linestyle='--', alpha=0.5, label='Success (300)')
-        ax1.legend()
-    
-    # 2. Evaluation Rewards
-    ax2 = plt.subplot(3, 3, 2)
-    if 'eval/mean_reward' in data:
-        steps = data['eval/mean_reward']['steps']
-        values = data['eval/mean_reward']['values']
-        ax2.plot(steps, values, linewidth=2, color='#A23B72', marker='o', markersize=4)
-        ax2.set_xlabel('Training Steps')
-        ax2.set_ylabel('Evaluation Reward')
-        ax2.set_title('Evaluation Performance')
-        ax2.grid(True, alpha=0.3)
-        ax2.axhline(y=300, color='green', linestyle='--', alpha=0.5, label='Success (300)')
-        ax2.legend()
-    
-    # 3. Episode Length
-    ax3 = plt.subplot(3, 3, 3)
+    # 1. Episode Length Over Time
+    ax1 = plt.subplot(2, 2, 1)
     if 'rollout/ep_len_mean' in data:
         steps = data['rollout/ep_len_mean']['steps']
         values = data['rollout/ep_len_mean']['values']
-        ax3.plot(steps, values, linewidth=2, color='#F18F01')
-        ax3.set_xlabel('Training Steps')
-        ax3.set_ylabel('Mean Episode Length')
-        ax3.set_title('Episode Length Over Time')
-        ax3.grid(True, alpha=0.3)
+        ax1.plot(steps, values, linewidth=2, color='#F18F01')
+        ax1.set_xlabel('Training Steps')
+        ax1.set_ylabel('Mean Episode Length')
+        ax1.set_title('Episode Length Over Time')
+        ax1.grid(True, alpha=0.3)
     
-    # 4. Actor Loss
-    ax4 = plt.subplot(3, 3, 4)
+    # 2. Actor Loss
+    ax2 = plt.subplot(2, 2, 2)
     if 'train/actor_loss' in data:
         steps = data['train/actor_loss']['steps']
         values = data['train/actor_loss']['values']
-        ax4.plot(steps, values, linewidth=1, color='#C73E1D', alpha=0.6)
-        ax4.set_xlabel('Training Steps')
-        ax4.set_ylabel('Actor Loss')
-        ax4.set_title('Actor Loss')
-        ax4.grid(True, alpha=0.3)
+        ax2.plot(steps, values, linewidth=1, color='#C73E1D', alpha=0.6)
+        ax2.set_xlabel('Training Steps')
+        ax2.set_ylabel('Actor Loss')
+        ax2.set_title('Actor Loss')
+        ax2.grid(True, alpha=0.3)
     
-    # 5. Critic Loss
-    ax5 = plt.subplot(3, 3, 5)
+    # 3. Critic Loss
+    ax3 = plt.subplot(2, 2, 3)
     if 'train/critic_loss' in data:
         steps = data['train/critic_loss']['steps']
         values = data['train/critic_loss']['values']
-        ax5.plot(steps, values, linewidth=1, color='#6A4C93', alpha=0.6)
-        ax5.set_xlabel('Training Steps')
-        ax5.set_ylabel('Critic Loss')
-        ax5.set_title('Critic Loss')
-        ax5.grid(True, alpha=0.3)
+        ax3.plot(steps, values, linewidth=1, color='#6A4C93', alpha=0.6)
+        ax3.set_xlabel('Training Steps')
+        ax3.set_ylabel('Critic Loss')
+        ax3.set_title('Critic Loss')
+        ax3.grid(True, alpha=0.3)
     
-    # 6. Learning Rate
-    ax6 = plt.subplot(3, 3, 6)
-    if 'train/learning_rate' in data:
-        steps = data['train/learning_rate']['steps']
-        values = data['train/learning_rate']['values']
-        ax6.plot(steps, values, linewidth=2, color='#1D7874')
-        ax6.set_xlabel('Training Steps')
-        ax6.set_ylabel('Learning Rate')
-        ax6.set_title('Learning Rate Schedule')
-        ax6.grid(True, alpha=0.3)
-    
-    # 7. FPS
-    ax7 = plt.subplot(3, 3, 7)
-    if 'time/fps' in data:
-        steps = data['time/fps']['steps']
-        values = data['time/fps']['values']
-        ax7.plot(steps, values, linewidth=2, color='#588B8B')
-        ax7.set_xlabel('Training Steps')
-        ax7.set_ylabel('FPS')
-        ax7.set_title('Training Speed (FPS)')
-        ax7.grid(True, alpha=0.3)
-    
-    # 8. Reward Histogram (final 20% of training)
-    ax8 = plt.subplot(3, 3, 8)
+    # 4. Reward Distribution (final 20% of training)
+    ax4 = plt.subplot(2, 2, 4)
     if 'rollout/ep_rew_mean' in data:
         values = data['rollout/ep_rew_mean']['values']
         final_rewards = values[int(len(values) * 0.8):]
-        ax8.hist(final_rewards, bins=30, color='#2E86AB', alpha=0.7, edgecolor='black')
-        ax8.axvline(x=300, color='green', linestyle='--', linewidth=2, label='Success (300)')
-        ax8.set_xlabel('Reward')
-        ax8.set_ylabel('Frequency')
-        ax8.set_title('Reward Distribution (Final 20%)')
-        ax8.legend()
-        ax8.grid(True, alpha=0.3)
-    
-    # 9. Combined Rewards Plot
-    ax9 = plt.subplot(3, 3, 9)
-    if 'rollout/ep_rew_mean' in data:
-        ax9.plot(data['rollout/ep_rew_mean']['steps'], 
-                data['rollout/ep_rew_mean']['values'], 
-                linewidth=2, color='#2E86AB', alpha=0.7, label='Training')
-    if 'eval/mean_reward' in data:
-        ax9.plot(data['eval/mean_reward']['steps'], 
-                data['eval/mean_reward']['values'], 
-                linewidth=2, color='#A23B72', marker='o', markersize=4, label='Evaluation')
-    ax9.axhline(y=300, color='green', linestyle='--', alpha=0.5)
-    ax9.set_xlabel('Training Steps')
-    ax9.set_ylabel('Mean Reward')
-    ax9.set_title('Training vs Evaluation Rewards')
-    ax9.legend()
-    ax9.grid(True, alpha=0.3)
+        ax4.hist(final_rewards, bins=30, color='#2E86AB', alpha=0.7, edgecolor='black')
+        ax4.set_xlabel('Reward')
+        ax4.set_ylabel('Frequency')
+        ax4.set_title('Reward Distribution (Final 20%)')
+        ax4.grid(True, alpha=0.3)
     
     plt.tight_layout()
     plot_path = save_dir / 'training_analysis.png'
@@ -183,7 +114,6 @@ def plot_training_analysis(data, save_dir):
                     linewidth=2.5, color='#A23B72', marker='o', markersize=5, 
                     label='Evaluation Reward')
         
-        plt.axhline(y=300, color='green', linestyle='--', linewidth=2, alpha=0.6, label='Success Threshold (300)')
         plt.xlabel('Training Steps', fontsize=12)
         plt.ylabel('Mean Reward', fontsize=12)
         plt.title('Training vs Evaluation Rewards', fontsize=14, fontweight='bold')
@@ -210,11 +140,6 @@ def print_statistics(data):
         print(f"  Max reward: {max(values):.2f}")
         print(f"  Mean reward: {np.mean(values):.2f}")
         print(f"  Std deviation: {np.std(values):.2f}")
-        
-        # Success rate in final 20%
-        final_rewards = values[int(len(values) * 0.8):]
-        success_rate = sum(1 for r in final_rewards if r > 300) / len(final_rewards) * 100
-        print(f"  Success rate (final 20%, >300): {success_rate:.1f}%")
     
     if 'eval/mean_reward' in data:
         values = data['eval/mean_reward']['values']
@@ -285,7 +210,7 @@ def plot_algorithm_comparison(algorithm='td3', save_dir='plots'):
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}. Use 'td3' or 'sac'.")
     
-    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+    fig, axes = plt.subplots(2, 1, figsize=(8, 12))
     
     # Plot 1: Training Rewards
     ax1 = axes[0]
@@ -305,7 +230,6 @@ def plot_algorithm_comparison(algorithm='td3', save_dir='plots'):
             print(f"⚠️ Error loading {name}: {e}")
             continue
     
-    ax1.axhline(y=300, color='green', linestyle='--', linewidth=2, alpha=0.5, label='Success (300)')
     ax1.set_xlabel('Training Steps', fontsize=12)
     ax1.set_ylabel('Mean Training Reward', fontsize=12)
     ax1.set_title(f'{title_prefix} Training Rewards Comparison', fontsize=14, fontweight='bold')
@@ -324,11 +248,10 @@ def plot_algorithm_comparison(algorithm='td3', save_dir='plots'):
                 steps = data['eval/mean_reward']['steps']
                 values = data['eval/mean_reward']['values']
                 ax2.plot(steps, values, linewidth=2.5, color=colors[name], 
-                        marker='o', markersize=4, alpha=0.8, label=name)
+                         markersize=4, alpha=0.8, label=name)
         except Exception as e:
             continue
     
-    ax2.axhline(y=300, color='green', linestyle='--', linewidth=2, alpha=0.5, label='Success (300)')
     ax2.set_xlabel('Training Steps', fontsize=12)
     ax2.set_ylabel('Mean Evaluation Reward', fontsize=12)
     ax2.set_title(f'{title_prefix} Evaluation Rewards Comparison', fontsize=14, fontweight='bold')
@@ -339,6 +262,51 @@ def plot_algorithm_comparison(algorithm='td3', save_dir='plots'):
     plot_path = save_dir / f'{algorithm.lower()}_environments_comparison.png'
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
     print(f"\n📊 {title_prefix} comparison plot saved to: {plot_path}")
+    plt.close()
+    
+    # Create third plot: Individual Loss Plots (3x2 grid - 6 subplots)
+    fig3 = plt.figure(figsize=(9, 14))
+    
+    plot_idx = 1
+    for name, log_dir in experiments.items():
+        if not Path(log_dir).exists():
+            continue
+        
+        try:
+            data = load_tensorboard_data(log_dir)
+            
+            # Actor Loss subplot (left column)
+            ax_actor = plt.subplot(3, 2, plot_idx)
+            if 'train/actor_loss' in data:
+                steps = data['train/actor_loss']['steps']
+                values = data['train/actor_loss']['values']
+                ax_actor.plot(steps, values, linewidth=2, color=colors[name], alpha=0.7)
+                ax_actor.set_xlabel('Training Steps', fontsize=10)
+                ax_actor.set_ylabel('Actor Loss', fontsize=10)
+                ax_actor.set_title(f'{name} - Actor Loss', fontsize=12, fontweight='bold')
+                ax_actor.grid(True, alpha=0.3)
+            
+            # Critic Loss subplot (right column)
+            ax_critic = plt.subplot(3, 2, plot_idx + 1)
+            if 'train/critic_loss' in data:
+                steps = data['train/critic_loss']['steps']
+                values = data['train/critic_loss']['values']
+                ax_critic.plot(steps, values, linewidth=2, color=colors[name], alpha=0.7)
+                ax_critic.set_xlabel('Training Steps', fontsize=10)
+                ax_critic.set_ylabel('Critic Loss', fontsize=10)
+                ax_critic.set_title(f'{name} - Critic Loss', fontsize=12, fontweight='bold')
+                ax_critic.grid(True, alpha=0.3)
+            
+            plot_idx += 2
+            
+        except Exception as e:
+            print(f"⚠️ Error loading {name}: {e}")
+            continue
+    
+    plt.tight_layout()
+    plot_path3 = save_dir / f'{algorithm.lower()}_loss_comparison.png'
+    plt.savefig(plot_path3, dpi=300, bbox_inches='tight')
+    print(f"📊 {title_prefix} loss comparison plot saved to: {plot_path3}")
     plt.close()
 
 
