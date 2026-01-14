@@ -185,9 +185,9 @@ def plot_algorithm_comparison(algorithm='td3', save_dir='plots'):
     # Define experiments based on algorithm
     if algorithm.lower() == 'td3':
         experiments = {
-            'TD3 Easy': 'experiments/logs/td3_easy',
-            'TD3 Hardcore': 'experiments/logs/td3_hardcore',
-            'TD3 Hardcore Bridges': 'experiments/logs/td3_hardcore_bridges'
+            'TD3 Easy': 'logs/td3_easy',
+            'TD3 Hardcore': 'logs/td3_hardcore_test_1',
+            'TD3 Hardcore Bridges': 'logs/td3_hardcore_bridges'
         }
         colors = {
             'TD3 Easy': '#2E86AB',
@@ -197,9 +197,9 @@ def plot_algorithm_comparison(algorithm='td3', save_dir='plots'):
         title_prefix = 'TD3'
     elif algorithm.lower() == 'sac':
         experiments = {
-            'SAC Easy': 'experiments/logs/sac_easy',
-            'SAC Hardcore': 'experiments/logs/sac_hardcore',
-            'SAC Hardcore Bridges': 'experiments/logs/sac_elite_unified_hardcore_gpu_custom_bridges'
+            'SAC Easy': 'logs/sac_easy/sac_easy',
+            'SAC Hardcore': 'logs/SAC_1',
+            'SAC Hardcore Bridges': 'logs/sac_bridges/sac_bridges_v2_decent'
         }
         colors = {
             'SAC Easy': '#2E86AB',
@@ -221,9 +221,16 @@ def plot_algorithm_comparison(algorithm='td3', save_dir='plots'):
         
         try:
             data = load_tensorboard_data(log_dir)
+            # Try different tag names for training rewards
+            reward_tag = None
             if 'rollout/ep_rew_mean' in data:
-                steps = data['rollout/ep_rew_mean']['steps']
-                values = data['rollout/ep_rew_mean']['values']
+                reward_tag = 'rollout/ep_rew_mean'
+            elif 'episode/mean_reward_100' in data:
+                reward_tag = 'episode/mean_reward_100'
+            
+            if reward_tag:
+                steps = data[reward_tag]['steps']
+                values = data[reward_tag]['values']
                 ax1.plot(steps, values, linewidth=2, color=colors[name], 
                         alpha=0.8, label=name)
         except Exception as e:
@@ -233,6 +240,7 @@ def plot_algorithm_comparison(algorithm='td3', save_dir='plots'):
     ax1.set_xlabel('Training Steps', fontsize=12)
     ax1.set_ylabel('Mean Training Reward', fontsize=12)
     ax1.set_title(f'{title_prefix} Training Rewards Comparison', fontsize=14, fontweight='bold')
+    ax1.set_ylim(-100, 350)  # Fixed scale for comparison
     ax1.legend(fontsize=10, loc='best')
     ax1.grid(True, alpha=0.3)
     
@@ -244,9 +252,17 @@ def plot_algorithm_comparison(algorithm='td3', save_dir='plots'):
         
         try:
             data = load_tensorboard_data(log_dir)
+            # Try different tag names for evaluation rewards
+            eval_tag = None
             if 'eval/mean_reward' in data:
-                steps = data['eval/mean_reward']['steps']
-                values = data['eval/mean_reward']['values']
+                eval_tag = 'eval/mean_reward'
+            elif 'episode/reward' in data:
+                # Use episode reward as proxy if no eval tag
+                eval_tag = 'episode/reward'
+            
+            if eval_tag:
+                steps = data[eval_tag]['steps']
+                values = data[eval_tag]['values']
                 ax2.plot(steps, values, linewidth=2.5, color=colors[name], 
                          markersize=4, alpha=0.8, label=name)
         except Exception as e:
@@ -255,6 +271,7 @@ def plot_algorithm_comparison(algorithm='td3', save_dir='plots'):
     ax2.set_xlabel('Training Steps', fontsize=12)
     ax2.set_ylabel('Mean Evaluation Reward', fontsize=12)
     ax2.set_title(f'{title_prefix} Evaluation Rewards Comparison', fontsize=14, fontweight='bold')
+    ax2.set_ylim(-100, 350)  # Fixed scale for comparison
     ax2.legend(fontsize=10, loc='best')
     ax2.grid(True, alpha=0.3)
     
